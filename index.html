@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUDO NEON - Premium Board Game</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+    <!-- Background Neon Blobs -->
+    <div class="neon-blob blob-red"></div>
+    <div class="neon-blob blob-green"></div>
+    <div class="neon-blob blob-blue"></div>
+    <div class="neon-blob blob-yellow"></div>
+
+    <div class="app-container">
+        <!-- SETUP SCREEN -->
+        <div id="setup-screen" class="setup-card glass-panel">
+            <h1 class="game-logo">LUDO <span class="accent-text">NEON</span></h1>
+            <p class="tagline">A premium 4-player board game experience</p>
+
+            <!-- Play Mode Selector Tabs -->
+            <div class="lobby-tabs">
+                <button id="tab-local" class="tab-btn active">Local Play</button>
+                <button id="tab-online" class="tab-btn">Online Play</button>
+            </div>
+
+            <!-- LOCAL PLAY CONTAINER -->
+            <div id="local-lobby-container">
+                <div class="player-config-grid">
+                    <!-- Red Player Config -->
+                    <div class="config-card player-red-theme">
+                        <div class="player-color-header">
+                            <div class="color-dot red-dot"></div>
+                            <h3>Player 1 (Red)</h3>
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-red" value="human" checked>
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-red" value="ai">
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-red" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Green Player Config -->
+                    <div class="config-card player-green-theme">
+                        <div class="player-color-header">
+                            <div class="color-dot green-dot"></div>
+                            <h3>Player 2 (Green)</h3>
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-green" value="human">
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-green" value="ai" checked>
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-green" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Yellow Player Config -->
+                    <div class="config-card player-yellow-theme">
+                        <div class="player-color-header">
+                            <div class="color-dot yellow-dot"></div>
+                            <h3>Player 3 (Yellow)</h3>
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-yellow" value="human">
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-yellow" value="ai" checked>
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-yellow" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Blue Player Config -->
+                    <div class="config-card player-blue-theme">
+                        <div class="player-color-header">
+                            <div class="color-dot blue-dot"></div>
+                            <h3>Player 4 (Blue)</h3>
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-blue" value="human">
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-blue" value="ai" checked>
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-blue" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setup-actions">
+                    <button id="start-game-btn" class="btn primary-btn btn-glow">Battle Arena</button>
+                    <button id="how-to-play-btn" class="btn secondary-btn">View Rules</button>
+                </div>
+            </div>
+
+            <!-- ONLINE PLAY CONTAINER -->
+            <div id="online-lobby-container" class="hidden">
+                <div class="online-roles">
+                    <button id="role-host" class="btn secondary-btn active">Host a Game</button>
+                    <button id="role-join" class="btn secondary-btn">Join a Game</button>
+                </div>
+
+                <!-- Host subpanel -->
+                <div id="host-panel" class="online-subpanel">
+                    <div class="lobby-action-box">
+                        <button id="btn-create-lobby" class="btn primary-btn btn-glow">Generate Lobby</button>
+                    </div>
+                    <div id="room-code-display" class="room-code-box hidden">
+                        <span class="code-label">LOBBY CODE</span>
+                        <div class="code-value-wrapper">
+                            <h2 id="lobby-code-txt">NEON-XXXX</h2>
+                            <button id="btn-copy-code" class="btn secondary-btn compact-btn">Copy</button>
+                        </div>
+                        <p class="lobby-subtext">Share this code with your friends so they can join!</p>
+                    </div>
+                </div>
+
+                <!-- Join subpanel -->
+                <div id="join-panel" class="online-subpanel hidden">
+                    <div class="lobby-action-box form-group">
+                        <input type="text" id="join-code-input" class="text-input" placeholder="ENTER ROOM CODE" maxlength="15">
+                        <button id="btn-join-lobby" class="btn primary-btn btn-glow">Connect Room</button>
+                    </div>
+                    <div id="join-status-txt" class="lobby-subtext"></div>
+                </div>
+
+                <!-- Players slot lists -->
+                <div id="lobby-player-list" class="lobby-player-list hidden">
+                    <h3>Players in Lobby</h3>
+                    <div class="online-player-grid">
+                        <div class="player-slot-pill pill-red" id="slot-pill-red">
+                            <span class="slot-color-dot red-bg"></span>
+                            <span class="slot-player-name" id="slot-name-red">Player 1 (Red): Connecting...</span>
+                        </div>
+                        <div class="player-slot-pill pill-green empty-slot" id="slot-pill-green">
+                            <span class="slot-color-dot green-bg"></span>
+                            <span class="slot-player-name" id="slot-name-green">Player 2 (Green): AI Bot</span>
+                        </div>
+                        <div class="player-slot-pill pill-yellow empty-slot" id="slot-pill-yellow">
+                            <span class="slot-color-dot yellow-bg"></span>
+                            <span class="slot-player-name" id="slot-name-yellow">Player 3 (Yellow): AI Bot</span>
+                        </div>
+                        <div class="player-slot-pill pill-blue empty-slot" id="slot-pill-blue">
+                            <span class="slot-color-dot blue-bg"></span>
+                            <span class="slot-player-name" id="slot-name-blue">Player 4 (Blue): AI Bot</span>
+                        </div>
+                    </div>
+                    <div class="online-start-actions">
+                        <button id="btn-start-online" class="btn primary-btn btn-glow hidden">Start Battle</button>
+                        <p id="online-wait-msg" class="lobby-subtext">Waiting for host to start...</p>
+                    </div>
+                </div>
+
+                <div class="setup-actions">
+                    <button id="how-to-play-online-btn" class="btn secondary-btn">View Rules</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN (hidden initially) -->
+        <div id="game-screen" class="game-layout hidden">
+            <!-- Header Panel -->
+            <header class="game-header glass-panel">
+                <div class="header-title">
+                    <h2>LUDO <span class="accent-text">NEON</span></h2>
+                </div>
+                <div class="header-controls">
+                    <button id="mute-btn" class="icon-btn" title="Toggle Sound">
+                        <svg id="sound-icon" viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
+                        </svg>
+                    </button>
+                    <button id="game-rules-btn" class="btn secondary-btn compact-btn">Rules</button>
+                    <button id="restart-btn" class="btn warning-btn compact-btn">Reset Board</button>
+                </div>
+            </header>
+
+            <div class="main-content-grid">
+                <!-- Left Column: Scoreboard / Turn Indicators -->
+                <div class="players-column">
+                    <div class="player-status-card player-red-card glass-panel" id="card-red">
+                        <div class="status-header">
+                            <div class="status-color-bar red-bg"></div>
+                            <span class="player-name">Player 1 (Red)</span>
+                            <span class="player-type-badge red-badge">Human</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-red" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-red"></div>
+                        </div>
+                    </div>
+
+                    <div class="player-status-card player-green-card glass-panel" id="card-green">
+                        <div class="status-header">
+                            <div class="status-color-bar green-bg"></div>
+                            <span class="player-name">Player 2 (Green)</span>
+                            <span class="player-type-badge green-badge">AI</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-green" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-green"></div>
+                        </div>
+                    </div>
+
+                    <div class="player-status-card player-yellow-card glass-panel" id="card-yellow">
+                        <div class="status-header">
+                            <div class="status-color-bar yellow-bg"></div>
+                            <span class="player-name">Player 3 (Yellow)</span>
+                            <span class="player-type-badge yellow-badge">AI</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-yellow" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-yellow"></div>
+                        </div>
+                    </div>
+
+                    <div class="player-status-card player-blue-card glass-panel" id="card-blue">
+                        <div class="status-header">
+                            <div class="status-color-bar blue-bg"></div>
+                            <span class="player-name">Player 4 (Blue)</span>
+                            <span class="player-type-badge blue-badge">AI</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-blue" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-blue"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Center Column: Ludo Board Grid -->
+                <div class="board-column">
+                    <div class="board-wrapper glass-panel">
+                        <div id="ludo-board" class="ludo-board">
+                            <!-- Bases and central home triangles are static layout structural elements -->
+                            
+                            <!-- Red Base -->
+                            <div class="base red-base" id="base-red">
+                                <div class="base-inner">
+                                    <div class="token-slot red-slot" id="slot-red-0"></div>
+                                    <div class="token-slot red-slot" id="slot-red-1"></div>
+                                    <div class="token-slot red-slot" id="slot-red-2"></div>
+                                    <div class="token-slot red-slot" id="slot-red-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Green Base -->
+                            <div class="base green-base" id="base-green">
+                                <div class="base-inner">
+                                    <div class="token-slot green-slot" id="slot-green-0"></div>
+                                    <div class="token-slot green-slot" id="slot-green-1"></div>
+                                    <div class="token-slot green-slot" id="slot-green-2"></div>
+                                    <div class="token-slot green-slot" id="slot-green-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Blue Base -->
+                            <div class="base blue-base" id="base-blue">
+                                <div class="base-inner">
+                                    <div class="token-slot blue-slot" id="slot-blue-0"></div>
+                                    <div class="token-slot blue-slot" id="slot-blue-1"></div>
+                                    <div class="token-slot blue-slot" id="slot-blue-2"></div>
+                                    <div class="token-slot blue-slot" id="slot-blue-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Yellow Base -->
+                            <div class="base yellow-base" id="base-yellow">
+                                <div class="base-inner">
+                                    <div class="token-slot yellow-slot" id="slot-yellow-0"></div>
+                                    <div class="token-slot yellow-slot" id="slot-yellow-1"></div>
+                                    <div class="token-slot yellow-slot" id="slot-yellow-2"></div>
+                                    <div class="token-slot yellow-slot" id="slot-yellow-3"></div>
+                                </div>
+                            </div>
+
+                            <!-- Home Area (Center Triangles) -->
+                            <div class="home-center">
+                                <!-- Inline SVG for responsive center meeting point triangles -->
+                                <svg class="home-triangles-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <polygon points="0,0 50,50 0,100" class="svg-triangle-red" />
+                                    <polygon points="0,0 50,50 100,0" class="svg-triangle-green" />
+                                    <polygon points="100,0 50,50 100,100" class="svg-triangle-yellow" />
+                                    <polygon points="0,100 50,50 100,100" class="svg-triangle-blue" />
+                                </svg>
+                                <div class="home-triangle triangle-red"></div>
+                                <div class="home-triangle triangle-green"></div>
+                                <div class="home-triangle triangle-yellow"></div>
+                                <div class="home-triangle triangle-blue"></div>
+                                <div class="center-star-badge">
+                                    <svg viewBox="0 0 24 24" width="28" height="28">
+                                        <path fill="#ffffff" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Remaining path cells will be generated programmatically in CSS Grid in JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Control Console & Dice Roll -->
+                <div class="controls-column">
+                    <!-- Status / Action Console -->
+                    <div class="action-card glass-panel">
+                        <div class="turn-announcement" id="turn-announcement">
+                            <span class="announcement-prefix">CURRENT TURN</span>
+                            <h2 id="current-player-turn" class="red-text">Player 1 (Red)</h2>
+                        </div>
+
+                        <!-- Dice Roll section -->
+                        <div class="dice-section">
+                            <div class="dice-perspective">
+                                <div id="dice" class="dice-cube show-1">
+                                    <!-- 3D Dice Faces -->
+                                    <div class="face front face-1">
+                                        <span class="dot"></span>
+                                    </div>
+                                    <div class="face back face-6">
+                                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                                    </div>
+                                    <div class="face right face-3">
+                                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                                    </div>
+                                    <div class="face left face-4">
+                                        <span class="dot"></span><span class="dot"></span>
+                                        <span class="dot"></span><span class="dot"></span>
+                                    </div>
+                                    <div class="face top face-2">
+                                        <span class="dot"></span><span class="dot"></span>
+                                    </div>
+                                    <div class="face bottom face-5">
+                                        <span class="dot"></span><span class="dot"></span>
+                                        <span class="dot"></span><span class="dot"></span>
+                                        <span class="dot"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button id="roll-btn" class="btn primary-btn btn-glow">Roll Dice</button>
+                        </div>
+
+                        <div class="turn-instruction" id="turn-instruction">
+                            Click "Roll Dice" or spin the cube!
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Logs -->
+                    <div class="logs-card glass-panel">
+                        <h3>Arena Logs</h3>
+                        <div class="logs-container" id="logs-container">
+                            <div class="log-entry system-log">Welcome to LUDO NEON! Setup completed. Ready to play.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RULES MODAL -->
+        <div id="rules-modal" class="modal hidden">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h2>Rules of <span class="accent-text">LUDO NEON</span></h2>
+                    <button class="close-btn" id="close-rules-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <ul class="rules-list">
+                        <li><strong>Player Configurations:</strong> The game supports 2 to 4 players. Any player can be set as <em>Human</em>, <em>Computer AI</em>, or disabled (<em>Off</em>).</li>
+                        <li><strong>Board Anatomy:</strong>
+                            <ul>
+                                <li><strong>Bases:</strong> The circular slots where tokens start.</li>
+                                <li><strong>Safe Zones:</strong> Squares marked with a Star (★) protect tokens. Multiple players' tokens can sit on a safe zone cell without capturing each other.</li>
+                                <li><strong>Home Run Paths:</strong> The colored lanes leading directly into the center triangles (Home).</li>
+                            </ul>
+                        </li>
+                        <li><strong>Releasing Tokens:</strong> You must roll a <strong>6</strong> to move a token out of the base onto your starting cell.</li>
+                        <li><strong>Capturing:</strong> Landing on a cell occupied by a single opponent token (outside a Safe Zone) captures that token, sending it back to their base. Capturing also grants you an <strong>extra roll</strong>!</li>
+                        <li><strong>Consecutive Rolls:</strong> You get an extra roll if:
+                            <ul>
+                                <li>You roll a <strong>6</strong> (up to 2 times consecutively; rolling three 6s skips your turn).</li>
+                                <li>You capture an opponent's token.</li>
+                                <li>One of your tokens reaches the Home center.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Entering Home:</strong> A token can only enter Home with an <strong>exact</strong> roll. (e.g., if you are 2 steps away, you must roll a 2).</li>
+                        <li><strong>Winning:</strong> The first player to get all <strong>4 tokens</strong> safely into the center Home wins the game!</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn primary-btn" id="close-rules-footer-btn">Got It!</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="audio.js"></script>
+    <script src="game.js?v=4"></script>
+</body>
+</html>
