@@ -83,6 +83,15 @@ colors.forEach(color => {
 
 // 2. Game State
 let playerTypes = { red: 'human', green: 'ai', yellow: 'ai', blue: 'ai' };
+let playerNames = {
+    red: 'Player 1 (Red)',
+    green: 'Player 2 (Green)',
+    yellow: 'Player 3 (Yellow)',
+    blue: 'Player 4 (Blue)'
+};
+let tokensCount = 4;
+let releaseRule = '6';
+
 let players = {
     red: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
     green: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
@@ -110,6 +119,20 @@ const getAudio = () => window.audioManager;
 
 // 3. Initialize Board grid cells in HTML
 function initBoardDOM() {
+    // Hide/show token slots based on tokens count
+    colors.forEach(color => {
+        for (let i = 0; i < 4; i++) {
+            const slot = document.getElementById(`slot-${color}-${i}`);
+            if (slot) {
+                if (i < tokensCount) {
+                    slot.style.display = '';
+                } else {
+                    slot.style.display = 'none';
+                }
+            }
+        }
+    });
+
     const boardEl = document.getElementById('ludo-board');
     
     // Clear dynamic cells if resetting
@@ -191,8 +214,7 @@ function isSafeCell(r, c) {
 
 // Get clean player labels
 function getPlayerName(color) {
-    const displayNames = { red: 'Player 1 (Red)', green: 'Player 2 (Green)', yellow: 'Player 3 (Yellow)', blue: 'Player 4 (Blue)' };
-    return displayNames[color];
+    return playerNames[color] || color.toUpperCase();
 }
 
 // Log messages into the GUI console
@@ -303,7 +325,13 @@ function renderBoard() {
 
         // Count tokens home
         const homeCount = players[color].tokens.filter(t => t.step === 56).length;
-        homeSpan.textContent = `${homeCount}/4`;
+        homeSpan.textContent = `${homeCount}/${tokensCount}`;
+
+        // Update name in scoreboard
+        const nameEl = card.querySelector('.player-name');
+        if (nameEl) {
+            nameEl.textContent = getPlayerName(color);
+        }
 
         // Active indicator
         card.classList.remove('active-turn');
@@ -317,7 +345,8 @@ function renderBoard() {
 function canTokenMove(color, tokenId, roll) {
     const step = players[color].tokens[tokenId].step;
     if (step === -1) {
-        return roll === 6; // Requires exactly 6 to release from base
+        const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
+        return canRelease;
     }
     return step + roll <= 56; // Exact fit or less
 }
@@ -564,7 +593,7 @@ async function processLanding(color, tokenId, step, roll) {
         
         // Check if color won
         const finishedCount = players[color].tokens.filter(t => t.step === 56).length;
-        if (finishedCount === 4) {
+        if (finishedCount === tokensCount) {
             players[color].finished = true;
             if (!gameWinnerList.includes(color)) {
                 gameWinnerList.push(color);
@@ -741,7 +770,8 @@ function evaluateAIMove(color, tokenId, roll) {
     }
 
     // 3. Release token from base
-    if (currentStep === -1 && roll === 6) {
+    const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
+    if (currentStep === -1 && canRelease) {
         // Count how many tokens are currently active on the track
         const activeCount = players[color].tokens.filter(t => t.step >= 0 && t.step < 56).length;
         if (activeCount === 0) {
@@ -924,7 +954,23 @@ function startLudoGame(override = false) {
         colors.forEach(color => {
             const checkedInput = document.querySelector(`input[name="p-${color}"]:checked`);
             playerTypes[color] = checkedInput ? checkedInput.value : 'off';
+
+            // Read custom names
+            const nameInput = document.getElementById(`name-${color}`);
+            if (nameInput && playerTypes[color] !== 'off') {
+                playerNames[color] = nameInput.value.trim() || `Player ${colors.indexOf(color) + 1}`;
+            }
         });
+
+        // Read game options
+        const tokensSelect = document.getElementById('tokens-count-select');
+        if (tokensSelect) {
+            tokensCount = parseInt(tokensSelect.value, 10) || 4;
+        }
+        const releaseSelect = document.getElementById('release-rule-select');
+        if (releaseSelect) {
+            releaseRule = releaseSelect.value || '6';
+        }
     }
 
     // Validate player count (minimum 2 active players)
@@ -937,12 +983,13 @@ function startLudoGame(override = false) {
     // Initialize/Resume Audio Context
     getAudio().init();
 
-    // Reset states
+    // Reset states dynamically matching tokensCount
+    const initialTokens = Array.from({ length: tokensCount }, () => ({ step: -1 }));
     players = {
-        red: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-        green: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-        yellow: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-        blue: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false }
+        red: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
+        green: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
+        yellow: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
+        blue: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false }
     };
     
     // Reset roll histories
@@ -1021,8 +1068,37 @@ function resetGameToSetup() {
     }
 }
 
+function updateNameInputStates() {
+    colors.forEach(color => {
+        const checkedInput = document.querySelector(`input[name="p-${color}"]:checked`);
+        const type = checkedInput ? checkedInput.value : 'off';
+        const nameInput = document.getElementById(`name-${color}`);
+        if (!nameInput) return;
+        
+        if (type === 'off') {
+            nameInput.disabled = true;
+        } else {
+            nameInput.disabled = false;
+            if (type === 'ai' && (nameInput.value === `Player ${colors.indexOf(color) + 1}` || nameInput.value === '')) {
+                nameInput.value = `NeonBot ${color.charAt(0).toUpperCase() + color.slice(1)}`;
+            } else if (type === 'human' && nameInput.value.startsWith('NeonBot ')) {
+                nameInput.value = `Player ${colors.indexOf(color) + 1}`;
+            }
+        }
+    });
+}
+
 // 9. Event Listeners Setup
 document.addEventListener('DOMContentLoaded', () => {
+    // Player configuration inputs change listener
+    colors.forEach(color => {
+        const radios = document.querySelectorAll(`input[name="p-${color}"]`);
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateNameInputStates);
+        });
+    });
+    updateNameInputStates();
+
     // Standard Buttons
     document.getElementById('start-game-btn').addEventListener('click', () => startLudoGame(false));
     document.getElementById('restart-btn').addEventListener('click', resetGameToSetup);
@@ -1162,6 +1238,10 @@ function generateRoomCode() {
 function initHost() {
     roomCode = generateRoomCode();
     
+    // Read local username
+    const onlineName = document.getElementById('online-player-name').value.trim() || 'Guest';
+    playerNames.red = onlineName;
+
     // Create host peer session
     peer = new Peer(roomCode, {
         host: '0.peerjs.com',
@@ -1250,7 +1330,8 @@ function setupIncomingConnection(conn) {
 function broadcastLobbyState() {
     const payload = {
         type: 'LOBBY_UPDATE',
-        playerTypes: playerTypes
+        playerTypes: playerTypes,
+        playerNames: playerNames
     };
     connections.forEach(c => {
         if (c.open) c.send(payload);
@@ -1317,12 +1398,23 @@ function handleClientReceivedData(data) {
         case 'HANDSHAKE':
             myColor = data.color;
             playerTypes = data.playerTypes;
+            
+            // Send client name to host
+            const onlineName = document.getElementById('online-player-name').value.trim() || 'Guest';
+            hostConn.send({
+                type: 'SET_PLAYER_NAME',
+                name: onlineName
+            });
+
             logMessage(`Connected as ${getPlayerName(myColor)}!`, myColor);
             updateOnlineLobbyUI();
             break;
             
         case 'LOBBY_UPDATE':
             playerTypes = data.playerTypes;
+            if (data.playerNames) {
+                playerNames = data.playerNames;
+            }
             updateOnlineLobbyUI();
             break;
             
@@ -1333,6 +1425,9 @@ function handleClientReceivedData(data) {
             
         case 'GAME_START':
             playerTypes = data.playerTypes;
+            if (data.playerNames) playerNames = data.playerNames;
+            if (data.tokensCount) tokensCount = data.tokensCount;
+            if (data.releaseRule) releaseRule = data.releaseRule;
             activePlayersOrder = data.activePlayersOrder;
             currentTurnColor = data.currentTurnColor;
             
@@ -1356,6 +1451,9 @@ function handleClientReceivedData(data) {
             isRolling = data.state.isRolling;
             isAnimating = data.state.isAnimating;
             playerTypes = data.state.playerTypes;
+            if (data.state.playerNames) playerNames = data.state.playerNames;
+            if (data.state.tokensCount) tokensCount = data.state.tokensCount;
+            if (data.state.releaseRule) releaseRule = data.state.releaseRule;
             
             setupNextActionInterface();
             break;
@@ -1389,6 +1487,14 @@ function handleHostReceivedData(peerId, data) {
     if (!senderColor) return;
 
     switch (data.type) {
+        case 'SET_PLAYER_NAME':
+            if (data.name) {
+                playerNames[senderColor] = data.name;
+                logMessage(`Player ${senderColor.toUpperCase()} set name to "${data.name}".`, senderColor);
+                broadcastLobbyState();
+            }
+            break;
+
         case 'REQUEST_ROLL':
             if (gamePhase === PHASE_ROLL && senderColor === currentTurnColor && !isRolling && !isAnimating) {
                 triggerDiceRoll();
@@ -1444,7 +1550,10 @@ function broadcastGameState() {
             activeOrderIndex: activeOrderIndex,
             isRolling: isRolling,
             isAnimating: isAnimating,
-            playerTypes: playerTypes
+            playerTypes: playerTypes,
+            playerNames: playerNames,
+            tokensCount: tokensCount,
+            releaseRule: releaseRule
         }
     };
     
@@ -1464,12 +1573,25 @@ function startOnlineGame() {
         return;
     }
     
+    // Read local options to start game with correct configuration
+    const tokensSelect = document.getElementById('tokens-count-select');
+    if (tokensSelect) {
+        tokensCount = parseInt(tokensSelect.value, 10) || 4;
+    }
+    const releaseSelect = document.getElementById('release-rule-select');
+    if (releaseSelect) {
+        releaseRule = releaseSelect.value || '6';
+    }
+
     // Broadcast start to clients
     connections.forEach(conn => {
         if (conn.open) {
             conn.send({
                 type: 'GAME_START',
                 playerTypes: playerTypes,
+                playerNames: playerNames,
+                tokensCount: tokensCount,
+                releaseRule: releaseRule,
                 activePlayersOrder: activePlayersOrder,
                 currentTurnColor: currentTurnColor
             });
@@ -1489,21 +1611,15 @@ function updateOnlineLobbyUI() {
 
         if (playerTypes[color] === 'human') {
             pill.classList.remove('empty-slot');
-            if (isHost) {
-                if (color === 'red') {
-                    nameSpan.textContent = `Player 1 (Red): Host (You)`;
-                } else {
-                    nameSpan.textContent = `${getPlayerName(color)}: Connected Client`;
-                }
+            let labelSuffix = '';
+            if (color === 'red') {
+                labelSuffix = isHost ? ' (Host) (You)' : ' (Host)';
             } else {
-                if (color === myColor) {
-                    nameSpan.textContent = `${getPlayerName(color)}: You`;
-                } else if (color === 'red') {
-                    nameSpan.textContent = `Player 1 (Red): Host`;
-                } else {
-                    nameSpan.textContent = `${getPlayerName(color)}: Connected Client`;
+                if (isOnline) {
+                    labelSuffix = (color === myColor) ? ' (You)' : ' (Client)';
                 }
             }
+            nameSpan.textContent = `${getPlayerName(color)}${labelSuffix}`;
         } else if (playerTypes[color] === 'ai') {
             pill.classList.add('empty-slot');
             nameSpan.textContent = `${getPlayerName(color)}: AI Bot`;
@@ -1566,6 +1682,14 @@ function resetOnlineState() {
     colors.forEach(c => {
         playerTypes[c] = (c === 'red') ? 'human' : 'ai';
     });
+    playerNames = {
+        red: 'Player 1 (Red)',
+        green: 'Player 2 (Green)',
+        yellow: 'Player 3 (Yellow)',
+        blue: 'Player 4 (Blue)'
+    };
+    tokensCount = 4;
+    releaseRule = '6';
     
     updateOnlineLobbyUI();
 }
