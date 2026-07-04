@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +8,12 @@
     <!-- Google Fonts for premium typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=2">
 </head>
+
 <body>
     <!-- Background Neon Blobs -->
     <div class="neon-blob blob-red"></div>
@@ -39,7 +43,8 @@
                             <h3>Player 1 (Red)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-red" class="player-name-input" value="Player 1" placeholder="Enter Name">
+                            <input type="text" id="name-red" class="player-name-input" value="Player 1"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-red" class="custom-select difficulty-select">
@@ -71,7 +76,8 @@
                             <h3>Player 2 (Green)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-green" class="player-name-input" value="Player 2" placeholder="Enter Name">
+                            <input type="text" id="name-green" class="player-name-input" value="Player 2"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-green" class="custom-select difficulty-select">
@@ -103,7 +109,8 @@
                             <h3>Player 3 (Yellow)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-yellow" class="player-name-input" value="Player 3" placeholder="Enter Name">
+                            <input type="text" id="name-yellow" class="player-name-input" value="Player 3"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-yellow" class="custom-select difficulty-select">
@@ -135,7 +142,8 @@
                             <h3>Player 4 (Blue)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-blue" class="player-name-input" value="Player 4" placeholder="Enter Name">
+                            <input type="text" id="name-blue" class="player-name-input" value="Player 4"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-blue" class="custom-select difficulty-select">
@@ -167,7 +175,8 @@
                             <h3>Player 5 (Orange)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-orange" class="player-name-input" value="Player 5" placeholder="Enter Name">
+                            <input type="text" id="name-orange" class="player-name-input" value="Player 5"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-orange" class="custom-select difficulty-select">
@@ -199,7 +208,8 @@
                             <h3>Player 6 (Purple)</h3>
                         </div>
                         <div class="name-input-wrapper">
-                            <input type="text" id="name-purple" class="player-name-input" value="Player 6" placeholder="Enter Name">
+                            <input type="text" id="name-purple" class="player-name-input" value="Player 6"
+                                placeholder="Enter Name">
                         </div>
                         <div class="difficulty-wrapper">
                             <select id="difficulty-purple" class="custom-select difficulty-select">
@@ -251,6 +261,28 @@
                                 <option value="1or6">1 or 6</option>
                             </select>
                         </div>
+                        <div class="settings-item">
+                            <label for="local-dice-mode-select">Dice Mode</label>
+                            <select id="local-dice-mode-select" class="custom-select">
+                                <option value="boosted" selected>Fast Start</option>
+                                <option value="fair">Fair Dice</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <label for="local-bonus-rule-select">Bonus Rolls</label>
+                            <select id="local-bonus-rule-select" class="custom-select">
+                                <option value="all" selected>6, Capture, Home</option>
+                                <option value="sixOnly">6 Only</option>
+                                <option value="none">Off</option>
+                            </select>
+                        </div>
+                        <div class="settings-item">
+                            <label for="local-triple-six-select">Three Sixes</label>
+                            <select id="local-triple-six-select" class="custom-select">
+                                <option value="skip" selected>Skip Turn</option>
+                                <option value="allow">Allow</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -264,7 +296,8 @@
             <div id="online-lobby-container" class="hidden">
                 <div class="online-name-wrapper">
                     <label for="online-player-name" class="online-label">Your Username</label>
-                    <input type="text" id="online-player-name" class="text-input online-name-input" value="Guest" placeholder="ENTER YOUR NAME" maxlength="15">
+                    <input type="text" id="online-player-name" class="text-input online-name-input" value="Guest"
+                        placeholder="ENTER YOUR NAME" maxlength="15">
                 </div>
 
                 <!-- Online Setup Actions -->
@@ -272,7 +305,7 @@
                     <div class="lobby-action-box">
                         <button id="btn-create-lobby" class="btn primary-btn btn-glow w-full">Host a New Game</button>
                     </div>
-                    
+
                     <div id="room-code-display" class="room-code-box hidden">
                         <span class="code-label">LOBBY CODE</span>
                         <div class="code-value-wrapper">
@@ -287,7 +320,8 @@
                     </div>
 
                     <div class="lobby-action-box form-group">
-                        <input type="text" id="join-code-input" class="text-input" placeholder="ENTER ROOM CODE" maxlength="15">
+                        <input type="text" id="join-code-input" class="text-input" placeholder="ENTER ROOM CODE"
+                            maxlength="15">
                         <button id="btn-join-lobby" class="btn primary-btn btn-glow">Connect Room</button>
                     </div>
                     <div id="join-status-txt" class="lobby-subtext"></div>
@@ -349,6 +383,28 @@
                                     <option value="1or6">1 or 6</option>
                                 </select>
                             </div>
+                            <div class="settings-item">
+                                <label for="online-dice-mode-select">Dice Mode</label>
+                                <select id="online-dice-mode-select" class="custom-select">
+                                    <option value="boosted" selected>Fast Start</option>
+                                    <option value="fair">Fair Dice</option>
+                                </select>
+                            </div>
+                            <div class="settings-item">
+                                <label for="online-bonus-rule-select">Bonus Rolls</label>
+                                <select id="online-bonus-rule-select" class="custom-select">
+                                    <option value="all" selected>6, Capture, Home</option>
+                                    <option value="sixOnly">6 Only</option>
+                                    <option value="none">Off</option>
+                                </select>
+                            </div>
+                            <div class="settings-item">
+                                <label for="online-triple-six-select">Three Sixes</label>
+                                <select id="online-triple-six-select" class="custom-select">
+                                    <option value="skip" selected>Skip Turn</option>
+                                    <option value="allow">Allow</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -374,12 +430,14 @@
                 <div class="header-controls">
                     <button id="mute-btn" class="icon-btn" title="Toggle Sound">
                         <svg id="sound-icon" viewBox="0 0 24 24" width="24" height="24">
-                            <path fill="currentColor" d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
+                            <path fill="currentColor"
+                                d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
                         </svg>
                     </button>
                     <button id="audio-settings-btn" class="icon-btn" title="Audio Settings">
                         <svg viewBox="0 0 24 24" width="24" height="24">
-                            <path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.47,5.34 14.86,5.08L14.48,2.42C14.44,2.18 14.23,2 14,2H10C9.77,2 9.56,2.18 9.52,2.42L9.14,5.08C8.53,5.34 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.95C7.96,18.34 8.53,18.66 9.14,18.92L9.52,21.58C9.56,21.82 9.77,22 10,22H14C14.23,22 14.44,21.82 14.48,21.58L14.86,18.92C15.47,18.66 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                            <path fill="currentColor"
+                                d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.47,5.34 14.86,5.08L14.48,2.42C14.44,2.18 14.23,2 14,2H10C9.77,2 9.56,2.18 9.52,2.42L9.14,5.08C8.53,5.34 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.95C7.96,18.34 8.53,18.66 9.14,18.92L9.52,21.58C9.56,21.82 9.77,22 10,22H14C14.23,22 14.44,21.82 14.48,21.58L14.86,18.92C15.47,18.66 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
                         </svg>
                     </button>
                     <button id="game-rules-btn" class="btn secondary-btn compact-btn">Rules</button>
@@ -512,7 +570,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <button id="roll-btn" class="btn primary-btn btn-glow">Roll Dice</button>
                         </div>
 
@@ -525,12 +583,12 @@
                     <div class="quick-chat-card glass-panel">
                         <h3 class="quick-chat-title">Battle Reactions</h3>
                         <div class="quick-chat-grid">
-                            <button class="chat-reaction-btn" data-msg="Nice move! 🔥">🔥</button>
-                            <button class="chat-reaction-btn" data-msg="Gotcha! ⚔️">⚔️</button>
-                            <button class="chat-reaction-btn" data-msg="Oh no! 😢">😢</button>
-                            <button class="chat-reaction-btn" data-msg="Lucky roll! 🎲">🎲</button>
-                            <button class="chat-reaction-btn" data-msg="GG! 🏆">🏆</button>
-                            <button class="chat-reaction-btn" data-msg="Hurry up! ⚡">⚡</button>
+                            <button class="chat-reaction-btn" data-msg="Nice move!">Nice</button>
+                            <button class="chat-reaction-btn" data-msg="Gotcha!">Hit</button>
+                            <button class="chat-reaction-btn" data-msg="Oh no!">Oops</button>
+                            <button class="chat-reaction-btn" data-msg="Lucky roll!">Roll</button>
+                            <button class="chat-reaction-btn" data-msg="Good game!">GG</button>
+                            <button class="chat-reaction-btn" data-msg="Hurry up!">Wait</button>
                         </div>
                     </div>
 
@@ -538,7 +596,8 @@
                     <div class="logs-card glass-panel">
                         <h3>Arena Logs</h3>
                         <div class="logs-container" id="logs-container">
-                            <div class="log-entry system-log">Welcome to LUDO NEON! Setup completed. Ready to play.</div>
+                            <div class="log-entry system-log">Welcome to LUDO NEON! Setup completed. Ready to play.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -554,25 +613,36 @@
                 </div>
                 <div class="modal-body">
                     <ul class="rules-list">
-                        <li><strong>Player Configurations:</strong> The game supports 2 to 4 players. Any player can be set as <em>Human</em>, <em>Computer AI</em>, or disabled (<em>Off</em>).</li>
+                        <li><strong>Player Configurations:</strong> The game supports 4, 5, or 6-player board modes.
+                            Local seats can be set as <em>Human</em>, <em>Computer AI</em>, or disabled (<em>Off</em>).
+                        </li>
                         <li><strong>Board Anatomy:</strong>
                             <ul>
                                 <li><strong>Bases:</strong> The circular slots where tokens start.</li>
-                                <li><strong>Safe Zones:</strong> Squares marked with a Star (★) protect tokens. Multiple players' tokens can sit on a safe zone cell without capturing each other.</li>
-                                <li><strong>Home Run Paths:</strong> The colored lanes leading directly into the center triangles (Home).</li>
+                                <li><strong>Safe Zones:</strong> Squares marked with a Star (★) protect tokens. Multiple
+                                    players' tokens can sit on a safe zone cell without capturing each other.</li>
+                                <li><strong>Home Run Paths:</strong> The colored lanes leading directly into the center
+                                    triangles (Home).</li>
                             </ul>
                         </li>
-                        <li><strong>Releasing Tokens:</strong> You must roll a <strong>6</strong> to move a token out of the base onto your starting cell.</li>
-                        <li><strong>Capturing:</strong> Landing on a cell occupied by a single opponent token (outside a Safe Zone) captures that token, sending it back to their base. Capturing also grants you an <strong>extra roll</strong>!</li>
+                        <li><strong>Releasing Tokens:</strong> By default you must roll a <strong>6</strong> to move a
+                            token out of the base. The setup screen can also allow releases on <strong>1 or 6</strong>.
+                        </li>
+                        <li><strong>Capturing:</strong> Landing on a cell occupied by a single opponent token (outside a
+                            Safe Zone) captures that token, sending it back to their base. Capturing also grants you an
+                            <strong>extra roll</strong>!</li>
                         <li><strong>Consecutive Rolls:</strong> You get an extra roll if:
                             <ul>
-                                <li>You roll a <strong>6</strong> (up to 2 times consecutively; rolling three 6s skips your turn).</li>
+                                <li>You roll a <strong>6</strong> (up to 2 times consecutively; rolling three 6s skips
+                                    your turn).</li>
                                 <li>You capture an opponent's token.</li>
                                 <li>One of your tokens reaches the Home center.</li>
                             </ul>
                         </li>
-                        <li><strong>Entering Home:</strong> A token can only enter Home with an <strong>exact</strong> roll. (e.g., if you are 2 steps away, you must roll a 2).</li>
-                        <li><strong>Winning:</strong> The first player to get all <strong>4 tokens</strong> safely into the center Home wins the game!</li>
+                        <li><strong>Entering Home:</strong> A token can only enter Home with an <strong>exact</strong>
+                            roll. (e.g., if you are 2 steps away, you must roll a 2).</li>
+                        <li><strong>Winning:</strong> The first player to get all of their tokens safely into the center
+                            Home wins the game.</li>
                     </ul>
                 </div>
                 <div class="modal-footer">
@@ -580,7 +650,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- GAME & AUDIO SETTINGS MODAL -->
         <div id="audio-settings-modal" class="modal hidden">
             <div class="modal-content glass-panel" style="max-width: 400px;">
@@ -592,14 +662,16 @@
                     <div class="settings-item">
                         <label for="music-volume-slider">Background Music</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="range" id="music-volume-slider" min="0" max="1" step="0.05" value="0.15" style="flex: 1;">
+                            <input type="range" id="music-volume-slider" min="0" max="1" step="0.05" value="0.15"
+                                style="flex: 1;">
                             <span id="music-vol-txt">15%</span>
                         </div>
                     </div>
                     <div class="settings-item">
                         <label for="sfx-volume-slider">Sound Effects (SFX)</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="range" id="sfx-volume-slider" min="0" max="1" step="0.05" value="0.30" style="flex: 1;">
+                            <input type="range" id="sfx-volume-slider" min="0" max="1" step="0.05" value="0.30"
+                                style="flex: 1;">
                             <span id="sfx-vol-txt">30%</span>
                         </div>
                     </div>
@@ -624,4 +696,5 @@
     <script src="audio.js"></script>
     <script src="game.js?v=6"></script>
 </body>
+
 </html>

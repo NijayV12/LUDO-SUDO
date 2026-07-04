@@ -211,6 +211,7 @@ body {
 .setup-actions {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 20px;
 }
 
@@ -224,6 +225,13 @@ body {
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     border: none;
     outline: none;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
 }
 
 .primary-btn {
@@ -634,15 +642,16 @@ body {
     width: 80%;
     height: 80%;
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 2px solid rgba(255, 255, 255, 0.9);
     cursor: default;
     position: relative;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 12px rgba(0,0,0,0.38), inset 0 3px 7px rgba(255,255,255,0.28);
     z-index: 10;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    isolation: isolate;
 }
 
 .token::after {
@@ -653,6 +662,18 @@ body {
     background: #fff;
     opacity: 0.7;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.token::before {
+    content: '';
+    position: absolute;
+    inset: -35%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.28), transparent 62%);
+    opacity: 0;
+    transform: scale(0.45);
+    z-index: -1;
+    pointer-events: none;
 }
 
 .token-red { background: linear-gradient(135deg, var(--color-red), #ff6b6b); box-shadow: 0 0 10px var(--color-red-glow); }
@@ -700,11 +721,63 @@ body {
 .token.movable:hover {
     transform: scale(1.2);
     z-index: 100;
+    filter: saturate(1.2) brightness(1.08);
+}
+
+.token-moving {
+    animation: tokenTravel 0.28s ease-in-out infinite alternate;
+    z-index: 120;
+}
+
+.token-landed {
+    animation: tokenLand 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.token-home-pop {
+    animation: tokenHomePop 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.token-captured {
+    animation: tokenCaptured 0.55s ease both;
+}
+
+.token-landed::before,
+.token-home-pop::before {
+    animation: tokenRipple 0.65s ease-out;
 }
 
 @keyframes tokenPulse {
     0% { transform: scale(1); box-shadow: 0 0 8px currentColor; }
     100% { transform: scale(1.1); box-shadow: 0 0 16px currentColor; }
+}
+
+@keyframes tokenTravel {
+    from { transform: translateY(0) scale(1.02); filter: brightness(1); }
+    to { transform: translateY(-6px) scale(1.08); filter: brightness(1.18); }
+}
+
+@keyframes tokenLand {
+    0% { transform: scale(1.18) translateY(-6px); }
+    55% { transform: scale(0.92) translateY(1px); }
+    100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes tokenHomePop {
+    0% { transform: scale(0.72) rotate(-12deg); filter: brightness(1.25); }
+    45% { transform: scale(1.28) rotate(8deg); }
+    100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+
+@keyframes tokenCaptured {
+    0%, 100% { transform: translateX(0) scale(1); opacity: 1; }
+    20% { transform: translateX(-5px) scale(0.95); opacity: 0.75; }
+    40% { transform: translateX(5px) scale(0.95); opacity: 0.8; }
+    60% { transform: translateX(-3px) scale(0.98); opacity: 0.9; }
+}
+
+@keyframes tokenRipple {
+    0% { opacity: 0.75; transform: scale(0.35); }
+    100% { opacity: 0; transform: scale(1.65); }
 }
 
 /* CONTROLS COLUMN (Dice and Actions) */
@@ -774,14 +847,14 @@ body {
     position: absolute;
     width: 60px;
     height: 60px;
-    background: rgba(17, 24, 39, 0.85);
+    background: linear-gradient(145deg, rgba(25, 34, 53, 0.95), rgba(7, 12, 22, 0.92));
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 12px;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
     padding: 8px;
-    box-shadow: inset 0 0 15px rgba(255,255,255,0.1), 0 0 15px rgba(255,255,255,0.05);
+    box-shadow: inset 0 0 15px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.28), 0 0 18px rgba(255,255,255,0.08);
     backface-visibility: visible;
 }
 
@@ -852,9 +925,19 @@ body {
     animation: spinDice 0.7s ease-out;
 }
 
+.dice-cube.dice-result-pop {
+    animation: diceSettle 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes spinDice {
     0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
     100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(180deg); }
+}
+
+@keyframes diceSettle {
+    0% { filter: brightness(1.35) saturate(1.25); }
+    45% { filter: brightness(1.65) saturate(1.45); }
+    100% { filter: brightness(1) saturate(1); }
 }
 
 .turn-instruction {
@@ -1473,7 +1556,9 @@ body {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-size: 1.25rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     width: 100%;
     aspect-ratio: 1/1;
     display: flex;
@@ -1512,4 +1597,3 @@ body {
     80% { transform: translateY(-20px); opacity: 1; }
     100% { transform: translateY(-40px); opacity: 0; }
 }
-

@@ -23,8 +23,13 @@ let homeTokenCoordinates = {};
 let lastInitializedBoardMode = null;
 
 function setupBoardGeometry(numPlayers) {
-    colors = allColors.slice(0, numPlayers);
-    
+    const nextColors = allColors.slice(0, numPlayers);
+    const geometryChanged = nextColors.length !== colors.length || nextColors.some((color, idx) => color !== colors[idx]);
+    colors = nextColors;
+    if (geometryChanged) {
+        lastInitializedBoardMode = null;
+    }
+
     perimeterCoordinates = [];
     colorStartIndices = {};
     safeCellIndices = [];
@@ -60,7 +65,7 @@ function setupBoardGeometry(numPlayers) {
     for (let p = 0; p < numPlayers; p++) {
         const u = { x: Math.cos(alpha[p]), y: Math.sin(alpha[p]) };
         const v = { x: -Math.sin(alpha[p]), y: Math.cos(alpha[p]) }; // clockwise perpendicular
-        
+
         const armIndexStart = perimeterCoordinates.length;
 
         // 1. Outgoing cells (6 cells, moving away from center)
@@ -105,7 +110,7 @@ function setupBoardGeometry(numPlayers) {
             y: C.y + 34.0 * Math.sin(beta[p])
         };
 
-        // Home token positions inside triangles (step 56)
+        // Home token positions inside triangles
         homeTokenCoordinates[color] = {
             x: C.x + 7.5 * u.x,
             y: C.y + 7.5 * u.y
@@ -117,14 +122,15 @@ function setupBoardGeometry(numPlayers) {
         const path = [];
         const startIdx = colorStartIndices[color];
         const N = perimeterCoordinates.length;
+        const homeEntryStep = N - 1;
 
-        // 51 perimeter cells clockwise
-        for (let i = 0; i < 51; i++) {
+        // Complete the shared perimeter, then turn into the player's home lane.
+        for (let i = 0; i < homeEntryStep; i++) {
             const idx = (startIdx + i) % N;
             path.push(perimeterCoordinates[idx]);
         }
 
-        // 5 home path cells (steps 51 to 55)
+        // 5 home path cells before the final center.
         const u = { x: Math.cos(alpha[p]), y: Math.sin(alpha[p]) };
         for (let i = 1; i <= 5; i++) {
             path.push({
@@ -135,7 +141,7 @@ function setupBoardGeometry(numPlayers) {
             });
         }
 
-        // Home center (step 56)
+        // Home center.
         path.push({
             x: homeTokenCoordinates[color].x,
             y: homeTokenCoordinates[color].y,
@@ -145,6 +151,22 @@ function setupBoardGeometry(numPlayers) {
 
         playerPaths[color] = path;
     });
+}
+
+function getHomeEntryStep() {
+    return Math.max(perimeterCoordinates.length - 1, 0);
+}
+
+function getFinalStep() {
+    return getHomeEntryStep() + 5;
+}
+
+function isPerimeterStep(step) {
+    return step >= 0 && step < getHomeEntryStep();
+}
+
+function isHomeLaneStep(step) {
+    return step >= getHomeEntryStep() && step < getFinalStep();
 }
 
 // 2. Game State
@@ -160,12 +182,15 @@ let playerNames = {
 };
 let tokensCount = 4;
 let releaseRule = '6';
+let diceMode = 'boosted';
+let bonusRollRule = 'all';
+let tripleSixRule = 'skip';
 
 let players = {
-    red: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-    green: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-    yellow: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false },
-    blue: { tokens: [{step: -1}, {step: -1}, {step: -1}, {step: -1}], finished: false }
+    red: { tokens: [{ step: -1 }, { step: -1 }, { step: -1 }, { step: -1 }], finished: false },
+    green: { tokens: [{ step: -1 }, { step: -1 }, { step: -1 }, { step: -1 }], finished: false },
+    yellow: { tokens: [{ step: -1 }, { step: -1 }, { step: -1 }, { step: -1 }], finished: false },
+    blue: { tokens: [{ step: -1 }, { step: -1 }, { step: -1 }, { step: -1 }], finished: false }
 };
 
 let activePlayersOrder = [];
@@ -176,6 +201,7 @@ let consecutiveSixes = 0;
 let isRolling = false;
 let isAnimating = false;
 let gameWinnerList = []; // Leaderboard list of colors in finish order
+let movingTokenKey = null;
 
 const PHASE_SETUP = 'setup';
 const PHASE_ROLL = 'roll';
@@ -190,12 +216,14 @@ const getAudio = () => window.audioManager;
 function initBoardDOM() {
     const boardEl = document.getElementById('ludo-board');
     if (!boardEl) return;
-    
+
+    const boardLayoutKey = `${colors.length}-${tokensCount}`;
+
     // Skip rebuilding if layout is already generated for the active player count
-    if (lastInitializedBoardMode === colors.length && boardEl.querySelector('.cell')) {
+    if (lastInitializedBoardMode === boardLayoutKey && boardEl.querySelector('.cell')) {
         return;
     }
-    lastInitializedBoardMode = colors.length;
+    lastInitializedBoardMode = boardLayoutKey;
 
     boardEl.innerHTML = ''; // Clear static layout structures
 
@@ -203,7 +231,7 @@ function initBoardDOM() {
     colors.forEach(color => {
         const baseCoord = baseCoordinates[color];
         if (!baseCoord) return;
-        
+
         const baseDiv = document.createElement('div');
         baseDiv.className = `base ${color}-base`;
         baseDiv.id = `base-${color}`;
@@ -212,17 +240,17 @@ function initBoardDOM() {
         baseDiv.style.width = '20%';
         baseDiv.style.height = '20%';
         baseDiv.style.transform = 'translate(-50%, -50%)';
-        
+
         const baseInner = document.createElement('div');
         baseInner.className = 'base-inner';
-        
+
         for (let i = 0; i < tokensCount; i++) {
             const slot = document.createElement('div');
             slot.className = `token-slot ${color}-slot`;
             slot.id = `slot-${color}-${i}`;
             baseInner.appendChild(slot);
         }
-        
+
         baseDiv.appendChild(baseInner);
         boardEl.appendChild(baseDiv);
     });
@@ -241,18 +269,18 @@ function initBoardDOM() {
     svgEl.setAttribute('class', 'home-triangles-svg');
     svgEl.setAttribute('viewBox', '0 0 100 100');
     svgEl.setAttribute('preserveAspectRatio', 'none');
-    
+
     const R_home_corner = 15.0;
-    
+
     colors.forEach((color, p) => {
         const prevBeta = beta[(p - 1 + P) % P];
         const currBeta = beta[p];
-        
+
         const x1 = 50 + R_home_corner * Math.cos(prevBeta);
         const y1 = 50 + R_home_corner * Math.sin(prevBeta);
         const x2 = 50 + R_home_corner * Math.cos(currBeta);
         const y2 = 50 + R_home_corner * Math.sin(currBeta);
-        
+
         const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         polygon.setAttribute('points', `50,50 ${x1.toFixed(2)},${y1.toFixed(2)} ${x2.toFixed(2)},${y2.toFixed(2)}`);
         polygon.setAttribute('class', `svg-triangle-${color}`);
@@ -277,7 +305,7 @@ function initBoardDOM() {
     colors.forEach(color => {
         const homeTokenCoord = homeTokenCoordinates[color];
         if (!homeTokenCoord) return;
-        
+
         const triangleDiv = document.createElement('div');
         triangleDiv.className = `home-triangle triangle-${color}`;
         triangleDiv.style.position = 'absolute';
@@ -292,56 +320,58 @@ function initBoardDOM() {
         const cellDiv = document.createElement('div');
         cellDiv.className = 'cell';
         cellDiv.id = `cell-p-${idx}`;
-        
+
         // Highlight start cells
         const isStart = colors.some((c, p) => idx === p * 13 + 8);
         if (isStart) {
             const pIdx = colors.findIndex((c, p) => idx === p * 13 + 8);
             const color = colors[pIdx];
             cellDiv.classList.add(`path-${color}-start`);
-            
+
             // Draw starting arrow pointing towards center (opposite of arm centerline direction)
             const arrowAngle = (alpha[pIdx] * 180 / Math.PI) + 180;
             const arrowEl = document.createElement('div');
             arrowEl.className = 'start-arrow';
             arrowEl.style.transform = `rotate(${arrowAngle}deg)`;
             arrowEl.style.color = `var(--color-${color})`;
-            arrowEl.textContent = '▶';
+            arrowEl.textContent = '>';
             cellDiv.appendChild(arrowEl);
         }
-        
+
         // Safe cells star highlights
         if (safeCellIndices.includes(idx)) {
             const safeColor = getSafeColor(idx);
             cellDiv.classList.add('safe-cell', `safe-cell-${safeColor}`);
         }
-        
+
         cellDiv.style.position = 'absolute';
         cellDiv.style.left = `${coord.x}%`;
         cellDiv.style.top = `${coord.y}%`;
         cellDiv.style.width = '5.2%';
         cellDiv.style.height = '5.2%';
         cellDiv.style.transform = 'translate(-50%, -50%)';
-        
+
         boardEl.appendChild(cellDiv);
     });
 
-    // 5. Create Home Path cells (steps 51 to 55)
+    // 5. Create Home Path cells
     colors.forEach((color, p) => {
         const path = playerPaths[color];
-        for (let step = 51; step <= 55; step++) {
+        const homeEntryStep = getHomeEntryStep();
+        const finalStep = getFinalStep();
+        for (let step = homeEntryStep; step < finalStep; step++) {
             const coord = path[step];
             const cellDiv = document.createElement('div');
             cellDiv.className = `cell ${color}-home-path`;
             cellDiv.id = `cell-h-${color}-${step}`;
-            
+
             cellDiv.style.position = 'absolute';
             cellDiv.style.left = `${coord.x}%`;
             cellDiv.style.top = `${coord.y}%`;
             cellDiv.style.width = '5.2%';
             cellDiv.style.height = '5.2%';
             cellDiv.style.transform = 'translate(-50%, -50%)';
-            
+
             boardEl.appendChild(cellDiv);
         }
     });
@@ -382,19 +412,21 @@ function getPlayerName(color) {
 // Log messages into the GUI console
 function logMessage(text, color = 'system') {
     const logsContainer = document.getElementById('logs-container');
+    if (!logsContainer) return;
+
     const log = document.createElement('div');
     log.className = `log-entry ${color}-log`;
-    log.textContent = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${text}`;
+    log.textContent = `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}] ${text}`;
     logsContainer.appendChild(log);
     logsContainer.scrollTop = logsContainer.scrollHeight;
 
     // Relays logs to clients in online multiplayer
-    if (isOnline && isHost) {
+    if (isOnline && isHost && !text.startsWith('[CHAT]')) {
         connections.forEach(c => {
             if (c.open) {
                 c.send({
-                    type: 'CHAT_MSG',
-                    text: text,
+                    type: 'LOG_MSG',
+                    message: text,
                     color: color
                 });
             }
@@ -407,32 +439,37 @@ function renderBoard() {
     // 1. Clear all slots & cell token containers
     const slots = document.querySelectorAll('.token-slot');
     slots.forEach(slot => slot.innerHTML = '');
-    
+
     const cells = document.querySelectorAll('.cell');
     cells.forEach(cell => {
-        cell.innerHTML = '';
+        cell.querySelectorAll('.token').forEach(token => token.remove());
         cell.className = cell.className.replace(/\bstack-\d+\b/g, '').trim();
     });
-    
+
     // Clear home triangles tokens if any
     const triangles = document.querySelectorAll('.home-triangle');
-    triangles.forEach(t => t.innerHTML = '');
+    triangles.forEach(t => {
+        t.querySelectorAll('.token').forEach(token => token.remove());
+    });
 
     // 2. Track token groupings per cell ID to manage stacking layouts
     const positionsMap = new Map();
 
     colors.forEach(color => {
         if (playerTypes[color] === 'off') return;
-        
+
         players[color].tokens.forEach((token, tokenId) => {
             const step = token.step;
-            
+
             // Build the token element
             const tokenDiv = document.createElement('div');
             tokenDiv.className = `token token-${color}`;
             tokenDiv.dataset.color = color;
             tokenDiv.dataset.tokenid = tokenId;
-            
+            if (movingTokenKey === `${color}-${tokenId}`) {
+                tokenDiv.classList.add('token-moving');
+            }
+
             // Add movable highlighting if conditions met
             if (gamePhase === PHASE_MOVE && color === currentTurnColor && (!isOnline || color === myColor) && playerTypes[color] === 'human' && !isAnimating) {
                 if (canTokenMove(color, tokenId, currentRoll)) {
@@ -446,21 +483,21 @@ function renderBoard() {
                 // In base slot
                 const slot = document.getElementById(`slot-${color}-${tokenId}`);
                 if (slot) slot.appendChild(tokenDiv);
-            } else if (step === 56) {
+            } else if (step === getFinalStep()) {
                 // In home triangle
                 const triangle = document.querySelector(`.triangle-${color}`);
                 if (triangle) triangle.appendChild(tokenDiv);
             } else {
                 // On path cells (perimeter or home path)
                 let cellId = '';
-                if (step >= 51) {
+                if (isHomeLaneStep(step)) {
                     cellId = `cell-h-${color}-${step}`;
                 } else {
                     const startIdx = colorStartIndices[color];
                     const idx = (startIdx + step) % perimeterCoordinates.length;
                     cellId = `cell-p-${idx}`;
                 }
-                
+
                 if (!positionsMap.has(cellId)) {
                     positionsMap.set(cellId, []);
                 }
@@ -483,7 +520,7 @@ function renderBoard() {
     allColors.forEach(color => {
         const card = document.getElementById(`card-${color}`);
         if (!card) return;
-        
+
         if (!colors.includes(color) || playerTypes[color] === 'off') {
             card.classList.add('hidden');
             return;
@@ -493,7 +530,7 @@ function renderBoard() {
 
         const homeSpan = document.getElementById(`home-${color}`);
         if (homeSpan) {
-            const homeCount = players[color].tokens.filter(t => t.step === 56).length;
+            const homeCount = players[color].tokens.filter(t => t.step === getFinalStep()).length;
             homeSpan.textContent = `${homeCount}/${tokensCount}`;
         }
 
@@ -530,12 +567,14 @@ function renderBoard() {
 
 // 5. Game Logic & Rules Core
 function canTokenMove(color, tokenId, roll) {
+    if (!players[color] || !players[color].tokens[tokenId]) return false;
+
     const step = players[color].tokens[tokenId].step;
     if (step === -1) {
         const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
         return canRelease;
     }
-    return step + roll <= 56; // Exact fit or less
+    return step + roll <= getFinalStep(); // Exact fit or less
 }
 
 function hasValidMoves(color, roll) {
@@ -549,7 +588,7 @@ function hasValidMoves(color, roll) {
 // Roll 3D dice logic
 function triggerDiceRoll() {
     if (isRolling || isAnimating || gamePhase !== PHASE_ROLL) return;
-    
+
     // If online and client, send request to host instead of executing locally
     if (isOnline && !isHost) {
         if (currentTurnColor === myColor) {
@@ -569,13 +608,13 @@ function triggerDiceRoll() {
 
     isRolling = true;
     getAudio().playRoll();
-    
+
     const diceEl = document.getElementById('dice');
     diceEl.classList.add('rolling');
-    
+
     // Roll dice: boost chance of rolling a 6 if player has zero tokens active on the track
     let roll;
-    const activeTokensCount = players[currentTurnColor].tokens.filter(t => t.step >= 0 && t.step < 56).length;
+    const activeTokensCount = players[currentTurnColor].tokens.filter(t => t.step >= 0 && t.step < getFinalStep()).length;
     if (activeTokensCount === 0) {
         // Boosted chance of rolling a 6 (35% probability)
         if (Math.random() < 0.35) {
@@ -599,20 +638,22 @@ function triggerDiceRoll() {
 
     setTimeout(() => {
         diceEl.classList.remove('rolling');
-        
+
         // Remove previous orientation classes
         for (let i = 1; i <= 6; i++) {
             diceEl.classList.remove(`show-${i}`);
         }
         // Set new face
         diceEl.classList.add(`show-${roll}`);
+        diceEl.classList.add('dice-result-pop');
+        setTimeout(() => diceEl.classList.remove('dice-result-pop'), 450);
         isRolling = false;
-        
+
         // Record roll to player history card list
         updateRollHistory(currentTurnColor, roll);
 
         logMessage(`${getPlayerName(currentTurnColor)} rolled a ${roll}!`, currentTurnColor);
-        
+
         handleRollResult(roll);
     }, 700);
 }
@@ -622,9 +663,9 @@ function updateRollHistory(color, roll) {
     const rollBadge = document.createElement('div');
     rollBadge.className = 'history-roll';
     rollBadge.textContent = roll;
-    
+
     historyContainer.appendChild(rollBadge);
-    
+
     // Limit to 8 visible rolls
     if (historyContainer.children.length > 8) {
         historyContainer.removeChild(historyContainer.firstChild);
@@ -634,7 +675,7 @@ function updateRollHistory(color, roll) {
 // Decide next action after a roll
 function handleRollResult(roll) {
     gamePhase = PHASE_MOVE;
-    
+
     // Check consecutive 6s
     if (roll === 6) {
         consecutiveSixes++;
@@ -654,7 +695,7 @@ function handleRollResult(roll) {
         logMessage(`No moves possible for ${getPlayerName(currentTurnColor)}.`, 'system');
         const instruction = document.getElementById('turn-instruction');
         instruction.textContent = "No valid moves possible! Passing turn...";
-        
+
         // Brief pause to show message before skipping
         setTimeout(() => {
             consecutiveSixes = 0; // Roll of 6 is forfeited since we couldn't move
@@ -676,7 +717,7 @@ function handleRollResult(roll) {
 // Token click action callback (Human)
 async function handleTokenClick(color, tokenId) {
     if (gamePhase !== PHASE_MOVE || color !== currentTurnColor || playerTypes[color] !== 'human' || isAnimating) return;
-    
+
     if (isOnline && !isHost) {
         if (color === myColor && canTokenMove(color, tokenId, currentRoll)) {
             // Send request to host
@@ -690,7 +731,7 @@ async function handleTokenClick(color, tokenId) {
         }
         return;
     }
-    
+
     if (canTokenMove(color, tokenId, currentRoll)) {
         await executeMove(color, tokenId, currentRoll);
     }
@@ -699,21 +740,22 @@ async function handleTokenClick(color, tokenId) {
 // Execute move step by step
 async function executeMove(color, tokenId, roll) {
     isAnimating = true;
+    movingTokenKey = `${color}-${tokenId}`;
     const token = players[color].tokens[tokenId];
     const startStep = token.step;
-    
+
     if (startStep === -1) {
         // Exiting base
         token.step = 0;
         getAudio().playRelease();
         logMessage(`${getPlayerName(color)} released token ${tokenId + 1} from base.`, color);
-        
+
         const startIdx = colorStartIndices[color];
         const cellEl = document.getElementById(`cell-p-${startIdx}`);
         createFloatingParticles(cellEl, `var(--color-${color})`);
-        
+
         renderBoard();
-        
+
         if (isOnline && isHost) {
             broadcastGameState();
         }
@@ -725,7 +767,7 @@ async function executeMove(color, tokenId, roll) {
         for (let s = startStep + 1; s <= targetStep; s++) {
             token.step = s;
             getAudio().playStep(s - startStep);
-            
+
             // Broadcast step sound to clients
             if (isOnline && isHost) {
                 connections.forEach(c => {
@@ -734,7 +776,7 @@ async function executeMove(color, tokenId, roll) {
             }
 
             renderBoard();
-            
+
             if (isOnline && isHost) {
                 broadcastGameState();
             }
@@ -742,7 +784,8 @@ async function executeMove(color, tokenId, roll) {
             await new Promise(r => setTimeout(r, 160));
         }
     }
-    
+
+    movingTokenKey = null;
     isAnimating = false;
     await processLanding(color, tokenId, token.step, roll);
 }
@@ -750,32 +793,34 @@ async function executeMove(color, tokenId, roll) {
 // Resolve collisions and win triggers on target grid cell
 async function processLanding(color, tokenId, step, roll) {
     let isCapture = false;
-    let isHomeRun = (step === 56);
-    
+    let isHomeRun = (step === getFinalStep());
+    const capturedTokens = [];
+
     let landCellEl = null;
     let myIdx = -1;
-    if (step >= 51) {
+    if (isHomeLaneStep(step)) {
         landCellEl = document.getElementById(`cell-h-${color}-${step}`);
     } else {
         myIdx = (colorStartIndices[color] + step) % perimeterCoordinates.length;
         landCellEl = document.getElementById(`cell-p-${myIdx}`);
     }
-    
+
     // Check Captures (only if landed cell is not safe)
-    if (step < 51 && !isSafeCell(myIdx)) {
+    if (isPerimeterStep(step) && !isSafeCell(myIdx)) {
         // Loop other players
         for (let otherColor of colors) {
             if (otherColor === color || playerTypes[otherColor] === 'off') continue;
-            
+
             players[otherColor].tokens.forEach((othToken, othId) => {
-                if (othToken.step >= 0 && othToken.step < 51) {
+                if (isPerimeterStep(othToken.step)) {
                     const othIdx = (colorStartIndices[otherColor] + othToken.step) % perimeterCoordinates.length;
                     if (othIdx === myIdx) {
                         // Capture!
                         othToken.step = -1; // Send to base
                         isCapture = true;
+                        capturedTokens.push({ color: otherColor, tokenId: othId });
                         logMessage(`BOOM! ${getPlayerName(color)} captured ${getPlayerName(otherColor)}'s token ${othId + 1}!`, color);
-                        
+
                         // Capture particle explosion
                         createFloatingParticles(landCellEl, `var(--color-${otherColor})`, 16);
                     }
@@ -788,18 +833,18 @@ async function processLanding(color, tokenId, step, roll) {
         getAudio().playCapture();
         createScoreboardFloatingText(landCellEl, "CAPTURED!", "var(--color-yellow)");
     }
-    
+
     if (isHomeRun) {
         getAudio().playHome();
         logMessage(`HOORAY! ${getPlayerName(color)} got token ${tokenId + 1} safely Home!`, color);
-        
+
         const centerEl = document.querySelector('.center-star-badge');
         const triangleEl = document.querySelector(`.triangle-${color}`);
         createFloatingParticles(triangleEl || centerEl, `var(--color-${color})`, 20);
         createScoreboardFloatingText(centerEl, "HOME RUN!", `var(--color-${color})`);
-        
+
         // Check if color won
-        const finishedCount = players[color].tokens.filter(t => t.step === 56).length;
+        const finishedCount = players[color].tokens.filter(t => t.step === getFinalStep()).length;
         if (finishedCount === tokensCount) {
             players[color].finished = true;
             if (!gameWinnerList.includes(color)) {
@@ -809,9 +854,9 @@ async function processLanding(color, tokenId, step, roll) {
                 if (place === 1) suffix = 'st';
                 else if (place === 2) suffix = 'nd';
                 else if (place === 3) suffix = 'rd';
-                
-                logMessage(`🏆 WINNER! ${getPlayerName(color)} finishes in ${place}${suffix} place!`, color);
-                
+
+                logMessage(`WINNER! ${getPlayerName(color)} finishes in ${place}${suffix} place!`, color);
+
                 const cardEl = document.getElementById(`card-${color}`);
                 createScoreboardFloatingText(cardEl, `${place}${suffix} Place!`, `var(--color-${color})`);
             }
@@ -819,11 +864,13 @@ async function processLanding(color, tokenId, step, roll) {
     }
 
     renderBoard();
-    
+    applyTokenEffect(color, tokenId, isHomeRun ? 'token-home-pop' : 'token-landed');
+    capturedTokens.forEach(captured => applyTokenEffect(captured.color, captured.tokenId, 'token-captured'));
+
     // Check if game is over (only 1 player or less remaining unfinished)
     const activeCount = activePlayersOrder.length;
     const finishedCount = activePlayersOrder.filter(c => players[c].finished).length;
-    
+
     if (finishedCount >= activeCount - 1 || finishedCount === activeCount) {
         // Game Over!
         endGameSession();
@@ -833,7 +880,7 @@ async function processLanding(color, tokenId, step, roll) {
     // Double roll logic:
     // Players get an extra turn if they roll a 6, capture an opponent, or reach home.
     const getExtraRoll = (roll === 6 || isCapture || isHomeRun) && !players[color].finished;
-    
+
     if (getExtraRoll) {
         logMessage(`${getPlayerName(color)} earns an extra roll!`, color);
         gamePhase = PHASE_ROLL;
@@ -854,13 +901,13 @@ function nextTurn() {
         activeOrderIndex = (activeOrderIndex + 1) % activePlayersOrder.length;
         currentTurnColor = activePlayersOrder[activeOrderIndex];
         loops++;
-    } while ((playerTypes[currentTurnColor] === 'off' || players[currentTurnColor].finished) && loops < 5);
+    } while ((playerTypes[currentTurnColor] === 'off' || players[currentTurnColor].finished) && loops <= activePlayersOrder.length);
 
     consecutiveSixes = 0;
     gamePhase = PHASE_ROLL;
-    
+
     logMessage(`It is now ${getPlayerName(currentTurnColor)}'s turn.`, currentTurnColor);
-    
+
     setupNextActionInterface();
 }
 
@@ -868,7 +915,7 @@ function nextTurn() {
 function setupNextActionInterface() {
     const turnLabel = document.getElementById('current-player-turn');
     turnLabel.textContent = getPlayerName(currentTurnColor);
-    
+
     // Update color theme class
     turnLabel.className = '';
     turnLabel.classList.add(`${currentTurnColor}-text`);
@@ -890,7 +937,7 @@ function setupNextActionInterface() {
                 instruction.textContent = `${getPlayerName(currentTurnColor)} (AI Bot) is playing...`;
             }
         }
-        
+
         // Only the host triggers AI turns automatically
         if (isHost && playerTypes[currentTurnColor] === 'ai' && gamePhase === PHASE_ROLL && !isRolling && !isAnimating) {
             setTimeout(triggerDiceRoll, 1000);
@@ -906,13 +953,14 @@ function setupNextActionInterface() {
             setTimeout(triggerDiceRoll, 1000);
         }
     }
-    
+
     renderBoard();
 
     // Host automatically updates state for clients
     if (isOnline && isHost) {
         broadcastGameState();
     }
+
 }
 
 // 6. AI Bot Decision Maker
@@ -956,19 +1004,19 @@ function evaluateAIMove(color, tokenId, roll) {
     const token = players[color].tokens[tokenId];
     const currentStep = token.step;
     const nextStep = (currentStep === -1) ? 0 : currentStep + roll;
-    
+
     let score = 0;
     const diff = playerDifficulties[color] || 'balanced';
 
     const nextIdx = (colorStartIndices[color] + nextStep) % perimeterCoordinates.length;
 
     // 1. Capture opportunity (Highest priority!)
-    if (nextStep < 51 && !isSafeCell(nextIdx)) {
+    if (isPerimeterStep(nextStep) && !isSafeCell(nextIdx)) {
         for (let otherColor of colors) {
             if (otherColor === color || playerTypes[otherColor] === 'off') continue;
-            
+
             players[otherColor].tokens.forEach(othToken => {
-                if (othToken.step >= 0 && othToken.step < 51) {
+                if (isPerimeterStep(othToken.step)) {
                     const othIdx = (colorStartIndices[otherColor] + othToken.step) % perimeterCoordinates.length;
                     if (othIdx === nextIdx) {
                         if (diff === 'aggressive') {
@@ -983,7 +1031,7 @@ function evaluateAIMove(color, tokenId, roll) {
     }
 
     // 2. Reach home center
-    if (nextStep === 56) {
+    if (nextStep === getFinalStep()) {
         if (diff === 'aggressive') {
             score += 500; // Aggressive bots prefer chasing/capturing over finishing quickly
         } else {
@@ -994,7 +1042,7 @@ function evaluateAIMove(color, tokenId, roll) {
     // 3. Release token from base
     const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
     if (currentStep === -1 && canRelease) {
-        const activeCount = players[color].tokens.filter(t => t.step >= 0 && t.step < 56).length;
+        const activeCount = players[color].tokens.filter(t => t.step >= 0 && t.step < getFinalStep()).length;
         if (activeCount === 0) {
             score += (diff === 'aggressive') ? 1200 : 800; // Aggressive releases immediately
         } else {
@@ -1004,7 +1052,7 @@ function evaluateAIMove(color, tokenId, roll) {
 
     // 4. Enter safe zone
     const currentIdx = currentStep >= 0 ? (colorStartIndices[color] + currentStep) % perimeterCoordinates.length : -1;
-    if (nextStep < 51 && isSafeCell(nextIdx) && (currentStep === -1 || !isSafeCell(currentIdx))) {
+    if (isPerimeterStep(nextStep) && isSafeCell(nextIdx) && (currentStep === -1 || !isSafeCell(currentIdx))) {
         if (diff === 'aggressive') {
             score -= 100; // Aggressive bots penalize hiding in safe zones
         } else {
@@ -1013,14 +1061,14 @@ function evaluateAIMove(color, tokenId, roll) {
     }
 
     // 5. Escape danger
-    if (currentStep >= 0 && currentStep < 51 && !isSafeCell(currentIdx)) {
+    if (isPerimeterStep(currentStep) && !isSafeCell(currentIdx)) {
         let isThreatened = false;
-        
+
         for (let otherColor of colors) {
             if (otherColor === color || playerTypes[otherColor] === 'off') continue;
-            
+
             players[otherColor].tokens.forEach(othToken => {
-                if (othToken.step >= 0 && othToken.step < 51) {
+                if (isPerimeterStep(othToken.step)) {
                     const dist = getStepsAway(otherColor, othToken.step, color, currentStep);
                     if (dist > 0 && dist <= 6) {
                         isThreatened = true;
@@ -1053,7 +1101,7 @@ function evaluateAIMove(color, tokenId, roll) {
 
 // Calculate how many steps player A (at step A) is behind player B (at step B)
 function getStepsAway(colorA, stepA, colorB, stepB) {
-    if (stepA < 0 || stepA >= 51 || stepB < 0 || stepB >= 51) return -1;
+    if (!isPerimeterStep(stepA) || !isPerimeterStep(stepB)) return -1;
     const idxA = (colorStartIndices[colorA] + stepA) % perimeterCoordinates.length;
     const idxB = (colorStartIndices[colorB] + stepB) % perimeterCoordinates.length;
     const N = perimeterCoordinates.length;
@@ -1161,11 +1209,11 @@ function triggerCanvasParticleLoop() {
 
     particleAnimId = requestAnimationFrame(loop);
 }
-}
+
 
 function createScoreboardFloatingText(anchorElement, text, colorCode) {
     if (!anchorElement) return;
-    
+
     const floatText = document.createElement('div');
     floatText.style.position = 'absolute';
     floatText.style.color = '#fff';
@@ -1180,28 +1228,28 @@ function createScoreboardFloatingText(anchorElement, text, colorCode) {
     floatText.style.pointerEvents = 'none';
     floatText.style.zIndex = '1000';
     floatText.textContent = text;
-    
+
     document.body.appendChild(floatText);
-    
+
     const rect = anchorElement.getBoundingClientRect();
-    const startX = rect.left + window.scrollX + (rect.width/2);
+    const startX = rect.left + window.scrollX + (rect.width / 2);
     const startY = rect.top + window.scrollY;
-    
+
     floatText.style.left = `${startX}px`;
     floatText.style.top = `${startY}px`;
     floatText.style.transform = 'translate(-50%, -50%)';
-    
+
     const startTime = performance.now();
     const duration = 1200;
-    
+
     function animateText(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
+
         // Rise and fade
         floatText.style.top = `${startY - (progress * 50)}px`;
         floatText.style.opacity = 1 - progress;
-        
+
         if (progress < 1) {
             requestAnimationFrame(animateText);
         } else {
@@ -1214,26 +1262,35 @@ function createScoreboardFloatingText(anchorElement, text, colorCode) {
 function displayFloatingChat(color, message) {
     const cardEl = document.getElementById(`card-${color}`);
     if (!cardEl) return;
-    
+
     const bubble = document.createElement('div');
     bubble.className = 'floating-chat-bubble';
     bubble.textContent = message;
-    
+
     const rect = cardEl.getBoundingClientRect();
     const x = rect.left + window.scrollX + (rect.width / 2);
     const y = rect.top + window.scrollY - 15;
-    
+
     bubble.style.left = `${x}px`;
     bubble.style.top = `${y}px`;
     bubble.style.transform = 'translateX(-50%)';
     bubble.style.borderColor = `var(--color-${color})`;
     bubble.style.boxShadow = `0 0 15px var(--color-${color}-glow)`;
-    
+
     document.body.appendChild(bubble);
-    
+
     setTimeout(() => {
         bubble.remove();
     }, 2500);
+}
+
+function applyTokenEffect(color, tokenId, effectClass) {
+    requestAnimationFrame(() => {
+        const tokenEl = document.querySelector(`.token[data-color="${color}"][data-tokenid="${tokenId}"]`);
+        if (!tokenEl) return;
+        tokenEl.classList.add(effectClass);
+        setTimeout(() => tokenEl.classList.remove(effectClass), 700);
+    });
 }
 
 // 8. Session Management (Start, Reset, End)
@@ -1299,12 +1356,12 @@ function startLudoGame(override = false) {
     allColors.forEach(color => {
         players[color] = { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false };
     });
-    
+
     // Reset roll histories
     colors.forEach(color => {
         const hist = document.getElementById(`history-${color}`);
         if (hist) hist.innerHTML = '';
-        
+
         // Update setup badges type
         const card = document.getElementById(`card-${color}`);
         if (card) {
@@ -1322,7 +1379,7 @@ function startLudoGame(override = false) {
     consecutiveSixes = 0;
     isRolling = false;
     isAnimating = false;
-    
+
     // Initialize HTML dynamic path DOM structures
     initBoardDOM();
 
@@ -1332,7 +1389,7 @@ function startLudoGame(override = false) {
 
     logMessage(`--- GAME STARTED ---`, 'system');
     logMessage(`Active Warriors: ${activePlayersOrder.map(c => c.toUpperCase()).join(', ')}`, 'system');
-    
+
     gamePhase = PHASE_ROLL;
     setupNextActionInterface();
 }
@@ -1340,16 +1397,16 @@ function startLudoGame(override = false) {
 function endGameSession() {
     gamePhase = PHASE_OVER;
     getAudio().playWin();
-    
+
     logMessage(`--- ARENA MATCH CONCLUDED ---`, 'system');
     gameWinnerList.forEach((col, idx) => {
-        logMessage(`#${idx+1} Place: ${getPlayerName(col).toUpperCase()}`, col);
+        logMessage(`#${idx + 1} Place: ${getPlayerName(col).toUpperCase()}`, col);
     });
 
     const instruction = document.getElementById('turn-instruction');
     const winnerName = getPlayerName(gameWinnerList[0]);
-    instruction.innerHTML = `🏆 MATCH OVER!<br>${winnerName.toUpperCase()} IS VICTORIOUS!`;
-    
+    instruction.innerHTML = `MATCH OVER!<br>${winnerName.toUpperCase()} IS VICTORIOUS!`;
+
     // Add win text animation
     const turnLabel = document.getElementById('current-player-turn');
     turnLabel.textContent = "GAME OVER";
@@ -1361,11 +1418,11 @@ function endGameSession() {
 
 function resetGameToSetup() {
     gamePhase = PHASE_SETUP;
-    
+
     // Transition screens back
     document.getElementById('game-screen').classList.add('hidden');
     document.getElementById('setup-screen').classList.remove('hidden');
-    
+
     // Clear logs
     const logsContainer = document.getElementById('logs-container');
     logsContainer.innerHTML = '<div class="log-entry system-log">Welcome to LUDO NEON! Setup completed. Ready to play.</div>';
@@ -1382,7 +1439,7 @@ function updateNameInputStates() {
         const type = checkedInput ? checkedInput.value : 'off';
         const nameInput = document.getElementById(`name-${color}`);
         if (!nameInput) return;
-        
+
         if (type === 'off' || !colors.includes(color)) {
             nameInput.disabled = true;
         } else {
@@ -1411,7 +1468,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boardModeSelect) {
         boardModeSelect.addEventListener('change', () => {
             const boardMode = parseInt(boardModeSelect.value, 10) || 4;
-            
+
             // Adjust visual lobby card elements
             allColors.forEach((color, idx) => {
                 const card = document.getElementById(`config-card-${color}`);
@@ -1439,9 +1496,9 @@ document.addEventListener('DOMContentLoaded', () => {
         onlineBoardModeSelect.addEventListener('change', () => {
             if (!isOnline || !isHost) return;
             const boardMode = parseInt(onlineBoardModeSelect.value, 10) || 4;
-            
+
             setupBoardGeometry(boardMode);
-            
+
             // Adjust player types locally on host
             colors.forEach(c => {
                 if (playerTypes[c] === 'off') {
@@ -1453,7 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     playerTypes[c] = 'off';
                 }
             });
-            
+
             broadcastLobbyState();
         });
     }
@@ -1483,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Standard Buttons
     document.getElementById('start-game-btn').addEventListener('click', () => startLudoGame(false));
     document.getElementById('restart-btn').addEventListener('click', resetGameToSetup);
-    
+
     // Play Mode Tabs toggles
     const tabLocal = document.getElementById('tab-local');
     const tabOnline = document.getElementById('tab-online');
@@ -1512,7 +1569,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Multiplayer Buttons
     const btnCreateLobby = document.getElementById('btn-create-lobby');
     if (btnCreateLobby) btnCreateLobby.addEventListener('click', initHost);
-    
+
     const btnJoinLobby = document.getElementById('btn-join-lobby');
     if (btnJoinLobby) {
         btnJoinLobby.addEventListener('click', () => {
@@ -1520,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (input) initClient(input.value);
         });
     }
-    
+
     const btnCopyCode = document.getElementById('btn-copy-code');
     if (btnCopyCode) {
         btnCopyCode.addEventListener('click', () => {
@@ -1544,15 +1601,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const rulesModal = document.getElementById('rules-modal');
     const showRules = () => rulesModal.classList.remove('hidden');
     const hideRules = () => rulesModal.classList.add('hidden');
-    
+
     const ruleBtn1 = document.getElementById('how-to-play-online-btn');
     if (ruleBtn1) ruleBtn1.addEventListener('click', showRules);
-    
+
     document.getElementById('how-to-play-btn').addEventListener('click', showRules);
     document.getElementById('game-rules-btn').addEventListener('click', showRules);
     document.getElementById('close-rules-btn').addEventListener('click', hideRules);
     document.getElementById('close-rules-footer-btn').addEventListener('click', hideRules);
-    
+
     // Clicking outside modal closes it
     rulesModal.addEventListener('click', (e) => {
         if (e.target === rulesModal) hideRules();
@@ -1571,10 +1628,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const audioSettingsBtn = document.getElementById('audio-settings-btn');
     if (audioSettingsBtn) audioSettingsBtn.addEventListener('click', showAudio);
-    
+
     document.getElementById('close-audio-btn').addEventListener('click', hideAudio);
     document.getElementById('close-audio-footer-btn').addEventListener('click', hideAudio);
-    
+
     audioModal.addEventListener('click', (e) => {
         if (e.target === audioModal) hideAudio();
     });
@@ -1687,9 +1744,49 @@ function generateRoomCode() {
     return `NEON-${code}`;
 }
 
+function isPeerAvailable() {
+    if (typeof Peer !== 'undefined') return true;
+
+    const message = 'Online play is unavailable because the PeerJS network library did not load. Check your internet connection and reload the game.';
+    logMessage(message, 'system');
+    alert(message);
+    return false;
+}
+
+function readRulesFromControls(prefix) {
+    const diceSelect = document.getElementById(`${prefix}-dice-mode-select`);
+    const bonusSelect = document.getElementById(`${prefix}-bonus-rule-select`);
+    const tripleSixSelect = document.getElementById(`${prefix}-triple-six-select`);
+
+    if (diceSelect) diceMode = diceSelect.value || 'boosted';
+    if (bonusSelect) bonusRollRule = bonusSelect.value || 'all';
+    if (tripleSixSelect) tripleSixRule = tripleSixSelect.value || 'skip';
+}
+
+function syncRulesToControls(prefix) {
+    const diceSelect = document.getElementById(`${prefix}-dice-mode-select`);
+    const bonusSelect = document.getElementById(`${prefix}-bonus-rule-select`);
+    const tripleSixSelect = document.getElementById(`${prefix}-triple-six-select`);
+
+    if (diceSelect) diceSelect.value = diceMode;
+    if (bonusSelect) bonusSelect.value = bonusRollRule;
+    if (tripleSixSelect) tripleSixSelect.value = tripleSixRule;
+}
+
+function setOnlineLobbyButtonsDisabled(disabled) {
+    ['btn-create-lobby', 'btn-join-lobby', 'join-code-input', 'online-player-name'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
 function initHost() {
+    if (!isPeerAvailable()) return;
+    if (isOnline || peer) return;
+
     roomCode = generateRoomCode();
-    
+    setOnlineLobbyButtonsDisabled(true);
+
     // Read local username
     const onlineName = document.getElementById('online-player-name').value.trim() || 'Guest';
     playerNames.red = onlineName;
@@ -1705,15 +1802,15 @@ function initHost() {
     statusTxt.textContent = "Connecting...";
     document.getElementById('room-code-display').classList.remove('hidden');
     document.getElementById('lobby-player-list').classList.remove('hidden');
-    
+
     peer.on('open', (id) => {
         isOnline = true;
         isHost = true;
         myColor = 'red';
-        
+
         statusTxt.textContent = id;
         logMessage(`Host lobby created. Room Code: ${id}`, 'system');
-        
+
         // Enable online settings dropdowns and show container for host
         const onlineSettings = document.querySelector('.online-settings-container');
         if (onlineSettings) onlineSettings.classList.remove('hidden');
@@ -1721,15 +1818,22 @@ function initHost() {
         const boardModeSelect = document.getElementById('online-board-mode-select');
         const tokensSelect = document.getElementById('online-tokens-count-select');
         const releaseSelect = document.getElementById('online-release-rule-select');
+        const diceSelect = document.getElementById('online-dice-mode-select');
+        const bonusSelect = document.getElementById('online-bonus-rule-select');
+        const tripleSixSelect = document.getElementById('online-triple-six-select');
         if (boardModeSelect) boardModeSelect.disabled = false;
         if (tokensSelect) tokensSelect.disabled = false;
         if (releaseSelect) releaseSelect.disabled = false;
+        if (diceSelect) diceSelect.disabled = false;
+        if (bonusSelect) bonusSelect.disabled = false;
+        if (tripleSixSelect) tripleSixSelect.disabled = false;
 
         const boardMode = boardModeSelect ? parseInt(boardModeSelect.value, 10) : 4;
         setupBoardGeometry(boardMode);
 
         if (tokensSelect) tokensCount = parseInt(tokensSelect.value, 10) || 4;
         if (releaseSelect) releaseRule = releaseSelect.value || '6';
+        readRulesFromControls('online');
 
         // Reset player types locally
         colors.forEach(c => {
@@ -1740,7 +1844,7 @@ function initHost() {
                 playerTypes[c] = 'off';
             }
         });
-        
+
         updateOnlineLobbyUI();
     });
 
@@ -1778,14 +1882,17 @@ function setupIncomingConnection(conn) {
 
     conn.on('open', () => {
         logMessage(`Player joined. Assigned to ${getPlayerName(assignedColor)}.`, assignedColor);
-        
+
         conn.send({
             type: 'HANDSHAKE',
             color: assignedColor,
             playerTypes: playerTypes,
             colors: colors,
             tokensCount: tokensCount,
-            releaseRule: releaseRule
+            releaseRule: releaseRule,
+            diceMode: diceMode,
+            bonusRollRule: bonusRollRule,
+            tripleSixRule: tripleSixRule
         });
 
         broadcastLobbyState();
@@ -1811,7 +1918,10 @@ function broadcastLobbyState() {
         playerNames: playerNames,
         colors: colors,
         tokensCount: tokensCount,
-        releaseRule: releaseRule
+        releaseRule: releaseRule,
+        diceMode: diceMode,
+        bonusRollRule: bonusRollRule,
+        tripleSixRule: tripleSixRule
     };
     connections.forEach(c => {
         if (c.open) c.send(payload);
@@ -1820,6 +1930,9 @@ function broadcastLobbyState() {
 }
 
 function initClient(targetRoomCode) {
+    if (!isPeerAvailable()) return;
+    if (isOnline || peer) return;
+
     const code = targetRoomCode.trim().toUpperCase();
     if (!code) {
         alert("Please enter a valid Room Code!");
@@ -1831,7 +1944,8 @@ function initClient(targetRoomCode) {
 
     const joinStatus = document.getElementById('join-status-txt');
     joinStatus.textContent = "Connecting to broker server...";
-    
+    setOnlineLobbyButtonsDisabled(true);
+
     peer = new Peer({
         host: '0.peerjs.com',
         port: 443,
@@ -1840,9 +1954,9 @@ function initClient(targetRoomCode) {
 
     peer.on('open', () => {
         joinStatus.textContent = `Connecting to Host: ${finalCode}...`;
-        
+
         hostConn = peer.connect(finalCode);
-        
+
         hostConn.on('open', () => {
             isOnline = true;
             isHost = false;
@@ -1856,9 +1970,15 @@ function initClient(targetRoomCode) {
             const boardModeSelect = document.getElementById('online-board-mode-select');
             const tokensSelect = document.getElementById('online-tokens-count-select');
             const releaseSelect = document.getElementById('online-release-rule-select');
+            const diceSelect = document.getElementById('online-dice-mode-select');
+            const bonusSelect = document.getElementById('online-bonus-rule-select');
+            const tripleSixSelect = document.getElementById('online-triple-six-select');
             if (boardModeSelect) boardModeSelect.disabled = true;
             if (tokensSelect) tokensSelect.disabled = true;
             if (releaseSelect) releaseSelect.disabled = true;
+            if (diceSelect) diceSelect.disabled = true;
+            if (bonusSelect) bonusSelect.disabled = true;
+            if (tripleSixSelect) tripleSixSelect.disabled = true;
         });
 
         hostConn.on('data', (data) => {
@@ -1904,7 +2024,7 @@ function handleClientReceivedData(data) {
                 const select = document.getElementById('online-release-rule-select');
                 if (select) select.value = releaseRule;
             }
-            
+
             // Send client name to host
             const onlineName = document.getElementById('online-player-name').value.trim() || 'Guest';
             hostConn.send({
@@ -1915,7 +2035,7 @@ function handleClientReceivedData(data) {
             logMessage(`Connected as ${getPlayerName(myColor)}!`, myColor);
             updateOnlineLobbyUI();
             break;
-            
+
         case 'LOBBY_UPDATE':
             playerTypes = data.playerTypes;
             if (data.playerNames) {
@@ -1938,34 +2058,48 @@ function handleClientReceivedData(data) {
             }
             updateOnlineLobbyUI();
             break;
-            
+
         case 'LOBBY_FULL':
             alert("Lobby is full!");
             resetOnlineState();
             break;
-            
+
         case 'GAME_START':
             playerTypes = data.playerTypes;
             if (data.playerNames) playerNames = data.playerNames;
             if (data.tokensCount) tokensCount = data.tokensCount;
             if (data.releaseRule) releaseRule = data.releaseRule;
             activePlayersOrder = data.activePlayersOrder;
+            activeOrderIndex = 0;
             currentTurnColor = data.currentTurnColor;
-            
+            currentRoll = 0;
+            consecutiveSixes = 0;
+            gameWinnerList = [];
+            gamePhase = PHASE_ROLL;
+            isRolling = false;
+            isAnimating = false;
+            players = {};
+            allColors.forEach(color => {
+                players[color] = {
+                    tokens: Array.from({ length: tokensCount }, () => ({ step: -1 })),
+                    finished: false
+                };
+            });
+
             if (data.colors) {
                 setupBoardGeometry(data.colors.length);
             } else {
                 setupBoardGeometry(4);
             }
-            
+
             initBoardDOM();
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
-            
+
             logMessage(`Online match started by host!`, 'system');
             setupNextActionInterface();
             break;
-            
+
         case 'STATE_SYNC':
             players = data.state.players;
             currentTurnColor = data.state.currentTurnColor;
@@ -1981,20 +2115,20 @@ function handleClientReceivedData(data) {
             if (data.state.playerNames) playerNames = data.state.playerNames;
             if (data.state.tokensCount) tokensCount = data.state.tokensCount;
             if (data.state.releaseRule) releaseRule = data.state.releaseRule;
-            
+
             if (data.state.colors) {
                 setupBoardGeometry(data.state.colors.length);
             }
-            
+
             initBoardDOM();
             setupNextActionInterface();
             break;
-            
+
         case 'ROLL_START_SYNC':
             const diceEl = document.getElementById('dice');
             if (diceEl) diceEl.classList.add('rolling');
             getAudio().playRoll();
-            
+
             setTimeout(() => {
                 if (diceEl) {
                     diceEl.classList.remove('rolling');
@@ -2003,14 +2137,18 @@ function handleClientReceivedData(data) {
                 }
             }, 700);
             break;
-            
+
         case 'ANIMATE_STEP':
             getAudio().playStep(data.stepVal);
             break;
- 
+
         case 'CHAT_MSG':
             displayFloatingChat(data.color, data.message);
             logMessage(`[CHAT] ${getPlayerName(data.color)}: ${data.message}`, data.color);
+            break;
+
+        case 'LOG_MSG':
+            logMessage(data.message, data.color || 'system');
             break;
     }
 }
@@ -2033,7 +2171,7 @@ function handleHostReceivedData(peerId, data) {
                 triggerDiceRoll();
             }
             break;
-            
+
         case 'REQUEST_MOVE':
             if (gamePhase === PHASE_MOVE && senderColor === currentTurnColor && !isRolling && !isAnimating) {
                 if (canTokenMove(senderColor, data.tokenId, currentRoll)) {
@@ -2065,12 +2203,12 @@ function handleClientDisconnect(peerId) {
         logMessage(`Connection lost with ${getPlayerName(dcColor)}. Replacing with AI bot.`, 'system');
         playerTypes[dcColor] = 'ai';
         delete peerIdToColorMap[peerId];
-        
+
         connections = connections.filter(conn => conn.peer !== peerId);
-        
+
         if (gamePhase !== PHASE_SETUP && gamePhase !== PHASE_OVER) {
             broadcastGameState();
-            
+
             if (currentTurnColor === dcColor && gamePhase === PHASE_ROLL && !isRolling && !isAnimating) {
                 setTimeout(triggerDiceRoll, 1000);
             } else if (currentTurnColor === dcColor && gamePhase === PHASE_MOVE && !isRolling && !isAnimating) {
@@ -2084,7 +2222,7 @@ function handleClientDisconnect(peerId) {
 
 function broadcastGameState() {
     if (!isOnline || !isHost) return;
-    
+
     const statePayload = {
         type: 'STATE_SYNC',
         state: {
@@ -2105,7 +2243,7 @@ function broadcastGameState() {
             colors: colors
         }
     };
-    
+
     connections.forEach(conn => {
         if (conn.open) {
             conn.send(statePayload);
@@ -2115,9 +2253,9 @@ function broadcastGameState() {
 
 function startOnlineGame() {
     if (!isOnline || !isHost) return;
-    
+
     // Read Board Mode
-    const boardModeSelect = document.getElementById('board-mode-select');
+    const boardModeSelect = document.getElementById('online-board-mode-select');
     let boardMode = 4;
     if (boardModeSelect) {
         boardMode = parseInt(boardModeSelect.value, 10) || 4;
@@ -2129,16 +2267,22 @@ function startOnlineGame() {
         alert("Lobby needs at least 2 active players to initiate!");
         return;
     }
-    
+
     // Read local options to start game with correct configuration
-    const tokensSelect = document.getElementById('tokens-count-select');
+    const tokensSelect = document.getElementById('online-tokens-count-select');
     if (tokensSelect) {
         tokensCount = parseInt(tokensSelect.value, 10) || 4;
     }
-    const releaseSelect = document.getElementById('release-rule-select');
+    const releaseSelect = document.getElementById('online-release-rule-select');
     if (releaseSelect) {
         releaseRule = releaseSelect.value || '6';
     }
+
+    activeOrderIndex = 0;
+    currentTurnColor = activePlayersOrder[0];
+    currentRoll = 0;
+    consecutiveSixes = 0;
+    gameWinnerList = [];
 
     // Broadcast start to clients
     connections.forEach(conn => {
@@ -2155,7 +2299,7 @@ function startOnlineGame() {
             });
         }
     });
-    
+
     startLudoGame(true);
 }
 
@@ -2194,12 +2338,12 @@ function updateOnlineLobbyUI() {
 
     const startOnlineBtn = document.getElementById('btn-start-online');
     const waitMsg = document.getElementById('online-wait-msg');
-    
+
     if (startOnlineBtn && waitMsg) {
         if (isHost) {
             startOnlineBtn.classList.remove('hidden');
             waitMsg.classList.add('hidden');
-            
+
             const clientConnected = colors.some(c => c !== 'red' && playerTypes[c] === 'human');
             startOnlineBtn.disabled = !clientConnected; // Host must wait for at least 1 online peer
         } else {
@@ -2213,21 +2357,21 @@ function resetOnlineState() {
     isOnline = false;
     isHost = false;
     myColor = 'red';
-    
+
     if (peer) {
         peer.destroy();
         peer = null;
     }
-    
+
     connections = [];
     hostConn = null;
     peerIdToColorMap = {};
-    
+
     const roomDisp = document.getElementById('room-code-display');
     const playList = document.getElementById('lobby-player-list');
     const startOnlineBtn = document.getElementById('btn-start-online');
     const waitMsg = document.getElementById('online-wait-msg');
-    
+
     if (roomDisp) roomDisp.classList.add('hidden');
     if (playList) playList.classList.add('hidden');
     if (startOnlineBtn) startOnlineBtn.classList.add('hidden');
@@ -2235,16 +2379,16 @@ function resetOnlineState() {
 
     const onlineSettings = document.querySelector('.online-settings-container');
     if (onlineSettings) onlineSettings.classList.add('hidden');
-    
+
     const joinStatus = document.getElementById('join-status-txt');
     if (joinStatus) joinStatus.textContent = '';
-    
+
     const codeTxt = document.getElementById('lobby-code-txt');
     if (codeTxt) codeTxt.textContent = 'NEON-XXXX';
-    
+
     const codeInput = document.getElementById('join-code-input');
     if (codeInput) codeInput.value = '';
-    
+
     setupBoardGeometry(4);
     colors.forEach(c => {
         playerTypes[c] = (c === 'red') ? 'human' : 'ai';
@@ -2272,6 +2416,6 @@ function resetOnlineState() {
     };
     tokensCount = 4;
     releaseRule = '6';
-    
+
     updateOnlineLobbyUI();
 }
