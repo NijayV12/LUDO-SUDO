@@ -485,6 +485,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+    pointer-events: auto;
 }
 
 /* Home Center Triangles */
@@ -716,11 +717,13 @@ body {
 /* Movable Highlight */
 .token.movable {
     cursor: pointer !important;
+    pointer-events: auto !important;
+    z-index: 200 !important;
     animation: tokenPulse 1.2s infinite alternate;
 }
 .token.movable:hover {
     transform: scale(1.2);
-    z-index: 100;
+    z-index: 300 !important;
     filter: saturate(1.2) brightness(1.08);
 }
 

@@ -475,7 +475,13 @@ function renderBoard() {
                 if (canTokenMove(color, tokenId, currentRoll)) {
                     tokenDiv.classList.add('movable');
                     tokenDiv.style.color = `var(--color-${color})`;
-                    tokenDiv.addEventListener('click', () => handleTokenClick(color, tokenId));
+                    tokenDiv.style.cursor = 'pointer';
+                    tokenDiv.style.pointerEvents = 'auto';
+                    // Use capturing to ensure click fires even through parent containers
+                    tokenDiv.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        handleTokenClick(color, tokenId);
+                    });
                 }
             }
 
@@ -574,7 +580,17 @@ function canTokenMove(color, tokenId, roll) {
         const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
         return canRelease;
     }
+    if (step === getFinalStep()) return false; // Already home
     return step + roll <= getFinalStep(); // Exact fit or less
+}
+
+// Return list of movable token IDs for a color and roll
+function getMovableTokenIds(color, roll) {
+    const ids = [];
+    players[color].tokens.forEach((_, id) => {
+        if (canTokenMove(color, id, roll)) ids.push(id);
+    });
+    return ids;
 }
 
 function hasValidMoves(color, roll) {
@@ -704,9 +720,17 @@ function handleRollResult(roll) {
     } else {
         // Highlight options for user or execute AI bot
         const instruction = document.getElementById('turn-instruction');
-        if (playerTypes[currentTurnColor] === 'human') {
-            instruction.textContent = "Choose one of your glowing tokens to move.";
-            renderBoard(); // highlights will appear on tokens
+        if (playerTypes[currentTurnColor] === 'human' && (!isOnline || currentTurnColor === myColor)) {
+            const movableIds = getMovableTokenIds(currentTurnColor, roll);
+            // Auto-move if only one token can move
+            if (movableIds.length === 1) {
+                instruction.textContent = `Only one token can move — moving automatically!`;
+                renderBoard();
+                setTimeout(() => executeMove(currentTurnColor, movableIds[0], roll), 400);
+            } else {
+                instruction.textContent = "Choose one of your glowing tokens to move.";
+                renderBoard(); // highlights will appear on tokens
+            }
         } else {
             instruction.textContent = "Computer is choosing a move...";
             setTimeout(triggerAIMove, 1000);
@@ -717,6 +741,7 @@ function handleRollResult(roll) {
 // Token click action callback (Human)
 async function handleTokenClick(color, tokenId) {
     if (gamePhase !== PHASE_MOVE || color !== currentTurnColor || playerTypes[color] !== 'human' || isAnimating) return;
+    if (isOnline && color !== myColor) return;
 
     if (isOnline && !isHost) {
         if (color === myColor && canTokenMove(color, tokenId, currentRoll)) {
@@ -733,6 +758,11 @@ async function handleTokenClick(color, tokenId) {
     }
 
     if (canTokenMove(color, tokenId, currentRoll)) {
+        // Immediately remove movable highlights to prevent double-click
+        document.querySelectorAll('.token.movable').forEach(t => {
+            t.classList.remove('movable');
+            t.style.cursor = 'default';
+        });
         await executeMove(color, tokenId, currentRoll);
     }
 }
@@ -1540,6 +1570,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Standard Buttons
     document.getElementById('start-game-btn').addEventListener('click', () => startLudoGame(false));
     document.getElementById('restart-btn').addEventListener('click', resetGameToSetup);
+
+    // Board-level click delegate — catches token clicks even if parent containers absorb events
+    // This is the PRIMARY click handler for tokens; individual token listeners are backup
+    document.getElementById('ludo-board').addEventListener('click', (e) => {
+        if (gamePhase !== PHASE_MOVE || isAnimating) return;
+        // Find the token element — could be the target or an ancestor
+        const tokenEl = e.target.closest('.token.movable');
+        if (!tokenEl) return;
+        const color = tokenEl.dataset.color;
+        const tokenId = parseInt(tokenEl.dataset.tokenid, 10);
+        if (color && !isNaN(tokenId)) {
+            handleTokenClick(color, tokenId);
+        }
+    });
 
     // Play Mode Tabs toggles
     const tabLocal = document.getElementById('tab-local');
