@@ -11,83 +11,150 @@ let hostConn = null; // Host connection on client
 let peerIdToColorMap = {}; // mapping peer ID to assigned color on host
 
 
-// 1. Coordinates and Paths Setup
-const perimeterCoordinates = [
-    // Left-to-right on row 6 (cols 0 to 5)
-    {r: 6, c: 0}, {r: 6, c: 1}, {r: 6, c: 2}, {r: 6, c: 3}, {r: 6, c: 4}, {r: 6, c: 5},
-    // Up col 6 (rows 5 to 0)
-    {r: 5, c: 6}, {r: 4, c: 6}, {r: 3, c: 6}, {r: 2, c: 6}, {r: 1, c: 6}, {r: 0, c: 6},
-    // Top-center col 7, row 0
-    {r: 0, c: 7},
-    // Down col 8 (rows 0 to 5)
-    {r: 0, c: 8}, {r: 1, c: 8}, {r: 2, c: 8}, {r: 3, c: 8}, {r: 4, c: 8}, {r: 5, c: 8},
-    // Left-to-right on row 6 (cols 9 to 14)
-    {r: 6, c: 9}, {r: 6, c: 10}, {r: 6, c: 11}, {r: 6, c: 12}, {r: 6, c: 13}, {r: 6, c: 14},
-    // Right-center col 14, row 7
-    {r: 7, c: 14},
-    // Right-to-left on row 8 (cols 14 to 9)
-    {r: 8, c: 14}, {r: 8, c: 13}, {r: 8, c: 12}, {r: 8, c: 11}, {r: 8, c: 10}, {r: 8, c: 9},
-    // Down col 8 (rows 9 to 14)
-    {r: 9, c: 8}, {r: 10, c: 8}, {r: 11, c: 8}, {r: 12, c: 8}, {r: 13, c: 8}, {r: 14, c: 8},
-    // Bottom-center col 7, row 14
-    {r: 14, c: 7},
-    // Up col 6 (rows 14 to 9)
-    {r: 14, c: 6}, {r: 13, c: 6}, {r: 12, c: 6}, {r: 11, c: 6}, {r: 10, c: 6}, {r: 9, c: 6},
-    // Right-to-left on row 8 (cols 5 to 0)
-    {r: 8, c: 5}, {r: 8, c: 4}, {r: 8, c: 3}, {r: 8, c: 2}, {r: 8, c: 1}, {r: 8, c: 0},
-    // Left-center col 0, row 7
-    {r: 7, c: 0}
-];
+// 1. Coordinates and Paths Setup (Dynamic Coordinates Engine)
+const allColors = ['red', 'green', 'yellow', 'blue', 'orange', 'purple'];
+let colors = ['red', 'green', 'yellow', 'blue'];
+let perimeterCoordinates = [];
+let colorStartIndices = {};
+let safeCellIndices = [];
+let playerPaths = {};
+let baseCoordinates = {};
+let homeTokenCoordinates = {};
 
-// Start and End indices for each color on perimeter coordinates
-const colorStartIndices = {
-    red: 1,       // (6, 1)
-    green: 14,    // (1, 8)
-    yellow: 27,   // (8, 13)
-    blue: 40      // (13, 6)
-};
-
-const safeCellIndices = [1, 9, 14, 22, 27, 35, 40, 48];
-
-// Precompute complete paths (length 57) for each color
-const playerPaths = {};
-const colors = ['red', 'green', 'yellow', 'blue'];
-
-colors.forEach(color => {
-    const path = [];
-    const startIdx = colorStartIndices[color];
+function setupBoardGeometry(numPlayers) {
+    colors = allColors.slice(0, numPlayers);
     
-    // Add 51 cells of perimeter path clockwise
-    for (let i = 0; i < 51; i++) {
-        const idx = (startIdx + i) % 52;
-        path.push(perimeterCoordinates[idx]);
+    perimeterCoordinates = [];
+    colorStartIndices = {};
+    safeCellIndices = [];
+    playerPaths = {};
+    baseCoordinates = {};
+    homeTokenCoordinates = {};
+
+    const C = { x: 50, y: 50 };
+
+    // Layout configuration constants (in percentages of board wrapper)
+    const r_inner = 12.0;
+    const r_outer = 37.5;
+    const r_tip = 42.0;
+    const w = 5.5;
+
+    // Outgoing, centerline, and ingoing tracks have 6 radial steps
+    const r = [];
+    for (let i = 0; i < 6; i++) {
+        r.push(r_outer - i * (r_outer - r_inner) / 5);
     }
-    
-    // Add home path (5 cells) & home center (1 cell)
-    if (color === 'red') {
-        for (let c = 1; c <= 5; c++) path.push({r: 7, c: c});
-        path.push({r: 7, c: 6});
-    } else if (color === 'green') {
-        for (let r = 1; r <= 5; r++) path.push({r: r, c: 7});
-        path.push({r: 6, c: 7});
-    } else if (color === 'yellow') {
-        for (let c = 13; c >= 9; c--) path.push({r: 7, c: c});
-        path.push({r: 7, c: 8});
-    } else if (color === 'blue') {
-        for (let r = 13; r >= 9; r--) path.push({r: r, c: 7});
-        path.push({r: 8, c: 7});
+
+    const alpha = [];
+    const beta = [];
+    for (let p = 0; p < numPlayers; p++) {
+        // Arm centerline angle
+        const a = p * (2 * Math.PI / numPlayers) - Math.PI;
+        alpha.push(a);
+        // Base angle sits midway to next arm
+        beta.push(a + Math.PI / numPlayers);
     }
-    
-    playerPaths[color] = path;
-});
+
+    // Build the perimeter track loop clockwise
+    for (let p = 0; p < numPlayers; p++) {
+        const u = { x: Math.cos(alpha[p]), y: Math.sin(alpha[p]) };
+        const v = { x: -Math.sin(alpha[p]), y: Math.cos(alpha[p]) }; // clockwise perpendicular
+        
+        const armIndexStart = perimeterCoordinates.length;
+
+        // 1. Outgoing cells (6 cells, moving away from center)
+        for (let i = 5; i >= 0; i--) {
+            perimeterCoordinates.push({
+                x: C.x + r[i] * u.x - w * v.x,
+                y: C.y + r[i] * u.y - w * v.y,
+                r: 0,
+                c: 0
+            });
+        }
+
+        // 2. Outer tip cell (1 cell)
+        perimeterCoordinates.push({
+            x: C.x + r_tip * u.x,
+            y: C.y + r_tip * u.y,
+            r: 0,
+            c: 0
+        });
+
+        // 3. Ingoing cells (6 cells, moving towards center)
+        for (let i = 0; i < 6; i++) {
+            perimeterCoordinates.push({
+                x: C.x + r[i] * u.x + w * v.x,
+                y: C.y + r[i] * u.y + w * v.y,
+                r: 0,
+                c: 0
+            });
+        }
+
+        const color = colors[p];
+        // Start cell is the second cell of the ingoing path (index armIndexStart + 8)
+        colorStartIndices[color] = armIndexStart + 8;
+
+        // Safe cells
+        safeCellIndices.push(armIndexStart + 8); // start cell
+        safeCellIndices.push(armIndexStart + 3); // outgoing safe cell
+
+        // Base coordinates
+        baseCoordinates[color] = {
+            x: C.x + 34.0 * Math.cos(beta[p]),
+            y: C.y + 34.0 * Math.sin(beta[p])
+        };
+
+        // Home token positions inside triangles (step 56)
+        homeTokenCoordinates[color] = {
+            x: C.x + 7.5 * u.x,
+            y: C.y + 7.5 * u.y
+        };
+    }
+
+    // Precompute complete paths (length 57) for each color
+    colors.forEach((color, p) => {
+        const path = [];
+        const startIdx = colorStartIndices[color];
+        const N = perimeterCoordinates.length;
+
+        // 51 perimeter cells clockwise
+        for (let i = 0; i < 51; i++) {
+            const idx = (startIdx + i) % N;
+            path.push(perimeterCoordinates[idx]);
+        }
+
+        // 5 home path cells (steps 51 to 55)
+        const u = { x: Math.cos(alpha[p]), y: Math.sin(alpha[p]) };
+        for (let i = 1; i <= 5; i++) {
+            path.push({
+                x: C.x + r[i] * u.x,
+                y: C.y + r[i] * u.y,
+                r: 0,
+                c: 0
+            });
+        }
+
+        // Home center (step 56)
+        path.push({
+            x: homeTokenCoordinates[color].x,
+            y: homeTokenCoordinates[color].y,
+            r: 0,
+            c: 0
+        });
+
+        playerPaths[color] = path;
+    });
+}
 
 // 2. Game State
-let playerTypes = { red: 'human', green: 'ai', yellow: 'ai', blue: 'ai' };
+let playerTypes = { red: 'human', green: 'ai', yellow: 'ai', blue: 'ai', orange: 'ai', purple: 'ai' };
 let playerNames = {
     red: 'Player 1 (Red)',
     green: 'Player 2 (Green)',
     yellow: 'Player 3 (Yellow)',
-    blue: 'Player 4 (Blue)'
+    blue: 'Player 4 (Blue)',
+    orange: 'Player 5 (Orange)',
+    purple: 'Player 6 (Purple)'
 };
 let tokensCount = 4;
 let releaseRule = '6';
@@ -119,97 +186,172 @@ const getAudio = () => window.audioManager;
 
 // 3. Initialize Board grid cells in HTML
 function initBoardDOM() {
-    // Hide/show token slots based on tokens count
+    const boardEl = document.getElementById('ludo-board');
+    if (!boardEl) return;
+    
+    boardEl.innerHTML = ''; // Clear static layout structures
+
+    // 1. Create dynamic bases and token slots
     colors.forEach(color => {
-        for (let i = 0; i < 4; i++) {
-            const slot = document.getElementById(`slot-${color}-${i}`);
-            if (slot) {
-                if (i < tokensCount) {
-                    slot.style.display = '';
-                } else {
-                    slot.style.display = 'none';
-                }
-            }
+        const baseCoord = baseCoordinates[color];
+        if (!baseCoord) return;
+        
+        const baseDiv = document.createElement('div');
+        baseDiv.className = `base ${color}-base`;
+        baseDiv.id = `base-${color}`;
+        baseDiv.style.left = `${baseCoord.x}%`;
+        baseDiv.style.top = `${baseCoord.y}%`;
+        baseDiv.style.width = '20%';
+        baseDiv.style.height = '20%';
+        baseDiv.style.transform = 'translate(-50%, -50%)';
+        
+        const baseInner = document.createElement('div');
+        baseInner.className = 'base-inner';
+        
+        for (let i = 0; i < tokensCount; i++) {
+            const slot = document.createElement('div');
+            slot.className = `token-slot ${color}-slot`;
+            slot.id = `slot-${color}-${i}`;
+            baseInner.appendChild(slot);
         }
+        
+        baseDiv.appendChild(baseInner);
+        boardEl.appendChild(baseDiv);
     });
 
-    const boardEl = document.getElementById('ludo-board');
+    const P = colors.length;
+    const alpha = [];
+    const beta = [];
+    for (let p = 0; p < P; p++) {
+        const a = p * (2 * Math.PI / P) - Math.PI;
+        alpha.push(a);
+        beta.push(a + Math.PI / P);
+    }
+
+    // 2. Create Home Center SVG and divided polygons
+    const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgEl.setAttribute('class', 'home-triangles-svg');
+    svgEl.setAttribute('viewBox', '0 0 100 100');
+    svgEl.setAttribute('preserveAspectRatio', 'none');
     
-    // Clear dynamic cells if resetting
-    const existingDynamic = boardEl.querySelectorAll('.cell');
-    existingDynamic.forEach(el => el.remove());
+    const R_home_corner = 15.0;
     
-    // Set up a Map to avoid duplicates (perimeter and home paths may cross but coordinates are unique)
-    const cellMap = new Map();
-    
-    // Add perimeter cells
-    perimeterCoordinates.forEach((coord, idx) => {
-        const key = `${coord.r}-${coord.c}`;
-        cellMap.set(key, {
-            ...coord,
-            isSafe: safeCellIndices.includes(idx),
-            class: safeCellIndices.includes(idx) ? `safe-cell safe-cell-${getSafeColor(idx)}` : ''
-        });
+    colors.forEach((color, p) => {
+        const prevBeta = beta[(p - 1 + P) % P];
+        const currBeta = beta[p];
+        
+        const x1 = 50 + R_home_corner * Math.cos(prevBeta);
+        const y1 = 50 + R_home_corner * Math.sin(prevBeta);
+        const x2 = 50 + R_home_corner * Math.cos(currBeta);
+        const y2 = 50 + R_home_corner * Math.sin(currBeta);
+        
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', `50,50 ${x1.toFixed(2)},${y1.toFixed(2)} ${x2.toFixed(2)},${y2.toFixed(2)}`);
+        polygon.setAttribute('class', `svg-triangle-${color}`);
+        polygon.style.fill = `var(--color-${color})`;
+        polygon.style.opacity = '0.85';
+        polygon.style.filter = `drop-shadow(0 0 4px var(--color-${color}-glow))`;
+        svgEl.appendChild(polygon);
     });
-    
-    // Add home paths
+    boardEl.appendChild(svgEl);
+
+    // Center decoration star badge
+    const centerBadge = document.createElement('div');
+    centerBadge.className = 'center-star-badge';
+    centerBadge.innerHTML = `
+        <svg viewBox="0 0 24 24" width="28" height="28">
+            <path fill="#ffffff" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
+        </svg>
+    `;
+    boardEl.appendChild(centerBadge);
+
+    // 3. Create Home Triangle Token Container divs
     colors.forEach(color => {
+        const homeTokenCoord = homeTokenCoordinates[color];
+        if (!homeTokenCoord) return;
+        
+        const triangleDiv = document.createElement('div');
+        triangleDiv.className = `home-triangle triangle-${color}`;
+        triangleDiv.style.position = 'absolute';
+        triangleDiv.style.left = `${homeTokenCoord.x}%`;
+        triangleDiv.style.top = `${homeTokenCoord.y}%`;
+        triangleDiv.style.transform = 'translate(-50%, -50%)';
+        boardEl.appendChild(triangleDiv);
+    });
+
+    // 4. Create Perimeter cells
+    perimeterCoordinates.forEach((coord, idx) => {
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'cell';
+        cellDiv.id = `cell-p-${idx}`;
+        
+        // Highlight start cells
+        const isStart = colors.some((c, p) => idx === p * 13 + 8);
+        if (isStart) {
+            const pIdx = colors.findIndex((c, p) => idx === p * 13 + 8);
+            const color = colors[pIdx];
+            cellDiv.classList.add(`path-${color}-start`);
+            
+            // Draw starting arrow pointing towards center (opposite of arm centerline direction)
+            const arrowAngle = (alpha[pIdx] * 180 / Math.PI) + 180;
+            const arrowEl = document.createElement('div');
+            arrowEl.className = 'start-arrow';
+            arrowEl.style.transform = `rotate(${arrowAngle}deg)`;
+            arrowEl.style.color = `var(--color-${color})`;
+            arrowEl.textContent = '▶';
+            cellDiv.appendChild(arrowEl);
+        }
+        
+        // Safe cells star highlights
+        if (safeCellIndices.includes(idx)) {
+            const safeColor = getSafeColor(idx);
+            cellDiv.classList.add('safe-cell', `safe-cell-${safeColor}`);
+        }
+        
+        cellDiv.style.position = 'absolute';
+        cellDiv.style.left = `${coord.x}%`;
+        cellDiv.style.top = `${coord.y}%`;
+        cellDiv.style.width = '5.2%';
+        cellDiv.style.height = '5.2%';
+        cellDiv.style.transform = 'translate(-50%, -50%)';
+        
+        boardEl.appendChild(cellDiv);
+    });
+
+    // 5. Create Home Path cells (steps 51 to 55)
+    colors.forEach((color, p) => {
         const path = playerPaths[color];
-        // home paths are steps 51 to 55 (5 cells)
         for (let step = 51; step <= 55; step++) {
             const coord = path[step];
-            const key = `${coord.r}-${coord.c}`;
-            cellMap.set(key, {
-                ...coord,
-                isSafe: true,
-                class: `${color}-home-path`
-            });
+            const cellDiv = document.createElement('div');
+            cellDiv.className = `cell ${color}-home-path`;
+            cellDiv.id = `cell-h-${color}-${step}`;
+            
+            cellDiv.style.position = 'absolute';
+            cellDiv.style.left = `${coord.x}%`;
+            cellDiv.style.top = `${coord.y}%`;
+            cellDiv.style.width = '5.2%';
+            cellDiv.style.height = '5.2%';
+            cellDiv.style.transform = 'translate(-50%, -50%)';
+            
+            boardEl.appendChild(cellDiv);
         }
-    });
-    
-    // Append starting cells special highlights
-    colors.forEach(color => {
-        const startIdx = colorStartIndices[color];
-        const coord = perimeterCoordinates[startIdx];
-        const key = `${coord.r}-${coord.c}`;
-        const existing = cellMap.get(key);
-        if (existing) {
-            existing.class += ` path-${color}-start`;
-        }
-    });
-
-    // Create DOM elements
-    cellMap.forEach((cellData, key) => {
-        const cellDiv = document.createElement('div');
-        cellDiv.className = `cell ${cellData.class}`;
-        cellDiv.id = `cell-${cellData.r}-${cellData.c}`;
-        cellDiv.style.gridRow = cellData.r + 1;
-        cellDiv.style.gridColumn = cellData.c + 1;
-        boardEl.appendChild(cellDiv);
     });
 }
 
 function getSafeColor(perimeterIdx) {
-    if (perimeterIdx === 1 || perimeterIdx === 48) return 'red';
-    if (perimeterIdx === 14 || perimeterIdx === 9) return 'green';
-    if (perimeterIdx === 27 || perimeterIdx === 22) return 'yellow';
-    if (perimeterIdx === 41 || perimeterIdx === 35) return 'blue';
+    const P = colors.length;
+    for (let p = 0; p < P; p++) {
+        const color = colors[p];
+        if (perimeterIdx === p * 13 + 8 || perimeterIdx === p * 13 + 3) {
+            return color;
+        }
+    }
     return 'neutral';
 }
 
-// Check if cell is safe from captures
-function isSafeCell(r, c) {
-    // Check if cell exists in perimeter and is safe
-    const perimeterIdx = perimeterCoordinates.findIndex(coord => coord.r === r && coord.c === c);
-    if (perimeterIdx !== -1 && safeCellIndices.includes(perimeterIdx)) return true;
-    
-    // Home paths are safe
-    for (let color of colors) {
-        const path = playerPaths[color];
-        const stepIdx = path.findIndex(coord => coord.r === r && coord.c === c);
-        if (stepIdx >= 51) return true; // home path cells or home triangle
-    }
-    return false;
+function isSafeCell(perimeterIdx) {
+    return safeCellIndices.includes(perimeterIdx);
 }
 
 // Get clean player labels
@@ -256,7 +398,7 @@ function renderBoard() {
     const triangles = document.querySelectorAll('.home-triangle');
     triangles.forEach(t => t.innerHTML = '');
 
-    // 2. Track token groupings per cell coordinates to manage stacking layouts
+    // 2. Track token groupings per cell ID to manage stacking layouts
     const positionsMap = new Map();
 
     colors.forEach(color => {
@@ -289,21 +431,27 @@ function renderBoard() {
                 const triangle = document.querySelector(`.triangle-${color}`);
                 if (triangle) triangle.appendChild(tokenDiv);
             } else {
-                // On path cells
-                const coord = playerPaths[color][step];
-                const cellKey = `${coord.r}-${coord.c}`;
-                
-                if (!positionsMap.has(cellKey)) {
-                    positionsMap.set(cellKey, []);
+                // On path cells (perimeter or home path)
+                let cellId = '';
+                if (step >= 51) {
+                    cellId = `cell-h-${color}-${step}`;
+                } else {
+                    const startIdx = colorStartIndices[color];
+                    const idx = (startIdx + step) % perimeterCoordinates.length;
+                    cellId = `cell-p-${idx}`;
                 }
-                positionsMap.get(cellKey).push(tokenDiv);
+                
+                if (!positionsMap.has(cellId)) {
+                    positionsMap.set(cellId, []);
+                }
+                positionsMap.get(cellId).push(tokenDiv);
             }
         });
     });
 
     // 3. Render cells with proper stacking CSS
-    positionsMap.forEach((tokensArr, cellKey) => {
-        const cellEl = document.getElementById(`cell-${cellKey}`);
+    positionsMap.forEach((tokensArr, cellId) => {
+        const cellEl = document.getElementById(cellId);
         if (cellEl) {
             tokensArr.forEach(t => cellEl.appendChild(t));
             const count = tokensArr.length;
@@ -311,26 +459,45 @@ function renderBoard() {
         }
     });
 
-    // 4. Update Scoreboard interface
-    colors.forEach(color => {
+    // 4. Update Scoreboard interface for all potential colors
+    allColors.forEach(color => {
         const card = document.getElementById(`card-${color}`);
-        const homeSpan = document.getElementById(`home-${color}`);
+        if (!card) return;
         
-        if (playerTypes[color] === 'off') {
+        if (!colors.includes(color) || playerTypes[color] === 'off') {
             card.classList.add('hidden');
             return;
         } else {
             card.classList.remove('hidden');
         }
 
-        // Count tokens home
-        const homeCount = players[color].tokens.filter(t => t.step === 56).length;
-        homeSpan.textContent = `${homeCount}/${tokensCount}`;
+        const homeSpan = document.getElementById(`home-${color}`);
+        if (homeSpan) {
+            const homeCount = players[color].tokens.filter(t => t.step === 56).length;
+            homeSpan.textContent = `${homeCount}/${tokensCount}`;
+        }
 
         // Update name in scoreboard
         const nameEl = card.querySelector('.player-name');
         if (nameEl) {
             nameEl.textContent = getPlayerName(color);
+        }
+
+        // Update human vs AI badge correctly
+        const badgeEl = card.querySelector('.player-type-badge');
+        if (badgeEl) {
+            let badgeText = 'AI';
+            if (playerTypes[color] === 'human') {
+                if (isOnline) {
+                    badgeText = (color === myColor) ? 'You' : 'Human';
+                } else {
+                    badgeText = 'Human';
+                }
+            } else if (playerTypes[color] === 'ai') {
+                badgeText = 'AI';
+            }
+            badgeEl.textContent = badgeText;
+            badgeEl.className = `player-type-badge ${color}-badge`;
         }
 
         // Active indicator
@@ -508,8 +675,9 @@ async function executeMove(color, tokenId, roll) {
         getAudio().playRelease();
         logMessage(`${getPlayerName(color)} released token ${tokenId + 1} from base.`, color);
         
-        const cellCoord = playerPaths[color][0];
-        createFloatingParticles(cellCoord.r, cellCoord.c, `var(--color-${color})`);
+        const startIdx = colorStartIndices[color];
+        const cellEl = document.getElementById(`cell-p-${startIdx}`);
+        createFloatingParticles(cellEl, `var(--color-${color})`);
         
         renderBoard();
         
@@ -548,29 +716,35 @@ async function executeMove(color, tokenId, roll) {
 
 // Resolve collisions and win triggers on target grid cell
 async function processLanding(color, tokenId, step, roll) {
-    const path = playerPaths[color];
-    const landCoord = path[step];
-    
     let isCapture = false;
     let isHomeRun = (step === 56);
     
+    let landCellEl = null;
+    let myIdx = -1;
+    if (step >= 51) {
+        landCellEl = document.getElementById(`cell-h-${color}-${step}`);
+    } else {
+        myIdx = (colorStartIndices[color] + step) % perimeterCoordinates.length;
+        landCellEl = document.getElementById(`cell-p-${myIdx}`);
+    }
+    
     // Check Captures (only if landed cell is not safe)
-    if (step < 51 && !isSafeCell(landCoord.r, landCoord.c)) {
+    if (step < 51 && !isSafeCell(myIdx)) {
         // Loop other players
         for (let otherColor of colors) {
             if (otherColor === color || playerTypes[otherColor] === 'off') continue;
             
             players[otherColor].tokens.forEach((othToken, othId) => {
                 if (othToken.step >= 0 && othToken.step < 51) {
-                    const othCoord = playerPaths[otherColor][othToken.step];
-                    if (othCoord.r === landCoord.r && othCoord.c === landCoord.c) {
+                    const othIdx = (colorStartIndices[otherColor] + othToken.step) % perimeterCoordinates.length;
+                    if (othIdx === myIdx) {
                         // Capture!
                         othToken.step = -1; // Send to base
                         isCapture = true;
                         logMessage(`BOOM! ${getPlayerName(color)} captured ${getPlayerName(otherColor)}'s token ${othId + 1}!`, color);
                         
                         // Capture particle explosion
-                        createFloatingParticles(landCoord.r, landCoord.c, `var(--color-${otherColor})`, 16);
+                        createFloatingParticles(landCellEl, `var(--color-${otherColor})`, 16);
                     }
                 }
             });
@@ -579,8 +753,7 @@ async function processLanding(color, tokenId, step, roll) {
 
     if (isCapture) {
         getAudio().playCapture();
-        const cellEl = document.getElementById(`cell-${landCoord.r}-${landCoord.c}`);
-        createScoreboardFloatingText(cellEl, "CAPTURED!", "var(--color-yellow)");
+        createScoreboardFloatingText(landCellEl, "CAPTURED!", "var(--color-yellow)");
     }
     
     if (isHomeRun) {
@@ -588,7 +761,8 @@ async function processLanding(color, tokenId, step, roll) {
         logMessage(`HOORAY! ${getPlayerName(color)} got token ${tokenId + 1} safely Home!`, color);
         
         const centerEl = document.querySelector('.center-star-badge');
-        createFloatingParticles(landCoord.r, landCoord.c, `var(--color-${color})`, 20);
+        const triangleEl = document.querySelector(`.triangle-${color}`);
+        createFloatingParticles(triangleEl || centerEl, `var(--color-${color})`, 20);
         createScoreboardFloatingText(centerEl, "HOME RUN!", `var(--color-${color})`);
         
         // Check if color won
@@ -743,20 +917,19 @@ function evaluateAIMove(color, tokenId, roll) {
     const currentStep = token.step;
     const nextStep = (currentStep === -1) ? 0 : currentStep + roll;
     
-    const path = playerPaths[color];
-    const nextCoord = path[nextStep];
-    
     let score = 0;
 
+    const nextIdx = (colorStartIndices[color] + nextStep) % perimeterCoordinates.length;
+
     // 1. Capture opportunity (Highest priority!)
-    if (nextStep < 51 && !isSafeCell(nextCoord.r, nextCoord.c)) {
+    if (nextStep < 51 && !isSafeCell(nextIdx)) {
         for (let otherColor of colors) {
             if (otherColor === color || playerTypes[otherColor] === 'off') continue;
             
-            players[otherColor].tokens.forEach((othToken, othId) => {
+            players[otherColor].tokens.forEach(othToken => {
                 if (othToken.step >= 0 && othToken.step < 51) {
-                    const othCoord = playerPaths[otherColor][othToken.step];
-                    if (othCoord.r === nextCoord.r && othCoord.c === nextCoord.c) {
+                    const othIdx = (colorStartIndices[otherColor] + othToken.step) % perimeterCoordinates.length;
+                    if (othIdx === nextIdx) {
                         score += 1200; // Super high rating for capture
                     }
                 }
@@ -782,13 +955,14 @@ function evaluateAIMove(color, tokenId, roll) {
     }
 
     // 4. Enter safe zone
-    if (nextStep < 51 && isSafeCell(nextCoord.r, nextCoord.c) && !isSafeCell(path[currentStep]?.r, path[currentStep]?.c)) {
+    const currentIdx = currentStep >= 0 ? (colorStartIndices[color] + currentStep) % perimeterCoordinates.length : -1;
+    if (nextStep < 51 && isSafeCell(nextIdx) && (currentStep === -1 || !isSafeCell(currentIdx))) {
         score += 300;
     }
 
     // 5. Escape danger
     // Check if an opponent is behind this token within 6 steps
-    if (currentStep >= 0 && currentStep < 51 && !isSafeCell(path[currentStep].r, path[currentStep].c)) {
+    if (currentStep >= 0 && currentStep < 51 && !isSafeCell(currentIdx)) {
         let isThreatened = false;
         
         for (let otherColor of colors) {
@@ -796,10 +970,7 @@ function evaluateAIMove(color, tokenId, roll) {
             
             players[otherColor].tokens.forEach(othToken => {
                 if (othToken.step >= 0 && othToken.step < 51) {
-                    const othCoord = playerPaths[otherColor][othToken.step];
-                    
                     // Trace paths of other players to see if they can reach our current cell
-                    // Opponent steps away
                     const dist = getStepsAway(otherColor, othToken.step, color, currentStep);
                     if (dist > 0 && dist <= 6) {
                         isThreatened = true;
@@ -828,25 +999,18 @@ function evaluateAIMove(color, tokenId, roll) {
 
 // Calculate how many steps player A (at step A) is behind player B (at step B)
 function getStepsAway(colorA, stepA, colorB, stepB) {
-    const coordA = playerPaths[colorA][stepA];
-    const coordB = playerPaths[colorB][stepB];
-
-    // Find perimeter index of both
-    const idxA = perimeterCoordinates.findIndex(c => c.r === coordA.r && c.c === coordA.c);
-    const idxB = perimeterCoordinates.findIndex(c => c.r === coordB.r && c.c === coordB.c);
-
-    if (idxA === -1 || idxB === -1) return -1; // One is in base/home-run
-
-    // Clockwise distance
-    return (idxB - idxA + 52) % 52;
+    if (stepA < 0 || stepA >= 51 || stepB < 0 || stepB >= 51) return -1;
+    const idxA = (colorStartIndices[colorA] + stepA) % perimeterCoordinates.length;
+    const idxB = (colorStartIndices[colorB] + stepB) % perimeterCoordinates.length;
+    const N = perimeterCoordinates.length;
+    return (idxB - idxA + N) % N;
 }
 
 // 7. Premium Visual Feedback: Particles & Text Splashes
-function createFloatingParticles(r, c, colorCode, count = 12) {
-    const boardEl = document.getElementById('ludo-board');
-    // Calculate approximate cell bounds
-    const cellEl = document.getElementById(`cell-${r}-${c}`);
+function createFloatingParticles(cellEl, colorCode, count = 12) {
     if (!cellEl) return;
+    const boardEl = document.getElementById('ludo-board');
+    if (!boardEl) return;
     
     const rect = cellEl.getBoundingClientRect();
     const boardRect = boardEl.getBoundingClientRect();
@@ -950,6 +1114,14 @@ function createScoreboardFloatingText(anchorElement, text, colorCode) {
 // 8. Session Management (Start, Reset, End)
 function startLudoGame(override = false) {
     if (!override && !isOnline) {
+        // Read Game Board Mode
+        const boardModeSelect = document.getElementById('board-mode-select');
+        let boardMode = 4;
+        if (boardModeSelect) {
+            boardMode = parseInt(boardModeSelect.value, 10) || 4;
+        }
+        setupBoardGeometry(boardMode);
+
         // Read setup screen radio inputs
         colors.forEach(color => {
             const checkedInput = document.querySelector(`input[name="p-${color}"]:checked`);
@@ -958,7 +1130,14 @@ function startLudoGame(override = false) {
             // Read custom names
             const nameInput = document.getElementById(`name-${color}`);
             if (nameInput && playerTypes[color] !== 'off') {
-                playerNames[color] = nameInput.value.trim() || `Player ${colors.indexOf(color) + 1}`;
+                playerNames[color] = nameInput.value.trim() || `Player ${allColors.indexOf(color) + 1}`;
+            }
+        });
+
+        // Set unused colors to 'off'
+        allColors.forEach(color => {
+            if (!colors.includes(color)) {
+                playerTypes[color] = 'off';
             }
         });
 
@@ -983,14 +1162,12 @@ function startLudoGame(override = false) {
     // Initialize/Resume Audio Context
     getAudio().init();
 
-    // Reset states dynamically matching tokensCount
+    // Reset states dynamically matching tokensCount for all potential colors
     const initialTokens = Array.from({ length: tokensCount }, () => ({ step: -1 }));
-    players = {
-        red: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
-        green: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
-        yellow: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false },
-        blue: { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false }
-    };
+    players = {};
+    allColors.forEach(color => {
+        players[color] = { tokens: JSON.parse(JSON.stringify(initialTokens)), finished: false };
+    });
     
     // Reset roll histories
     colors.forEach(color => {
@@ -1015,7 +1192,7 @@ function startLudoGame(override = false) {
     isRolling = false;
     isAnimating = false;
     
-    // Initialize HTML grid path DOM structures
+    // Initialize HTML dynamic path DOM structures
     initBoardDOM();
 
     // Transition screens
@@ -1069,20 +1246,20 @@ function resetGameToSetup() {
 }
 
 function updateNameInputStates() {
-    colors.forEach(color => {
+    allColors.forEach(color => {
         const checkedInput = document.querySelector(`input[name="p-${color}"]:checked`);
         const type = checkedInput ? checkedInput.value : 'off';
         const nameInput = document.getElementById(`name-${color}`);
         if (!nameInput) return;
         
-        if (type === 'off') {
+        if (type === 'off' || !colors.includes(color)) {
             nameInput.disabled = true;
         } else {
             nameInput.disabled = false;
-            if (type === 'ai' && (nameInput.value === `Player ${colors.indexOf(color) + 1}` || nameInput.value === '')) {
+            if (type === 'ai' && (nameInput.value === `Player ${allColors.indexOf(color) + 1}` || nameInput.value === '')) {
                 nameInput.value = `NeonBot ${color.charAt(0).toUpperCase() + color.slice(1)}`;
             } else if (type === 'human' && nameInput.value.startsWith('NeonBot ')) {
-                nameInput.value = `Player ${colors.indexOf(color) + 1}`;
+                nameInput.value = `Player ${allColors.indexOf(color) + 1}`;
             }
         }
     });
@@ -1091,12 +1268,42 @@ function updateNameInputStates() {
 // 9. Event Listeners Setup
 document.addEventListener('DOMContentLoaded', () => {
     // Player configuration inputs change listener
-    colors.forEach(color => {
+    allColors.forEach(color => {
         const radios = document.querySelectorAll(`input[name="p-${color}"]`);
         radios.forEach(radio => {
             radio.addEventListener('change', updateNameInputStates);
         });
     });
+
+    // Board Mode selector change listener
+    const boardModeSelect = document.getElementById('board-mode-select');
+    if (boardModeSelect) {
+        boardModeSelect.addEventListener('change', () => {
+            const boardMode = parseInt(boardModeSelect.value, 10) || 4;
+            
+            // Adjust visual lobby card elements
+            allColors.forEach((color, idx) => {
+                const card = document.getElementById(`config-card-${color}`);
+                if (card) {
+                    if (idx < boardMode) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                        // Reset player type to off when hidden
+                        const offRadio = document.querySelector(`input[name="p-${color}"][value="off"]`);
+                        if (offRadio) offRadio.checked = true;
+                    }
+                }
+            });
+
+            // Re-setup board geometry for local state reference
+            setupBoardGeometry(boardMode);
+            updateNameInputStates();
+        });
+    }
+
+    // Call dynamic setup for default 4 players mode initially
+    setupBoardGeometry(4);
     updateNameInputStates();
 
     // Standard Buttons
@@ -1308,7 +1515,8 @@ function setupIncomingConnection(conn) {
         conn.send({
             type: 'HANDSHAKE',
             color: assignedColor,
-            playerTypes: playerTypes
+            playerTypes: playerTypes,
+            colors: colors
         });
 
         broadcastLobbyState();
@@ -1331,7 +1539,8 @@ function broadcastLobbyState() {
     const payload = {
         type: 'LOBBY_UPDATE',
         playerTypes: playerTypes,
-        playerNames: playerNames
+        playerNames: playerNames,
+        colors: colors
     };
     connections.forEach(c => {
         if (c.open) c.send(payload);
@@ -1398,6 +1607,9 @@ function handleClientReceivedData(data) {
         case 'HANDSHAKE':
             myColor = data.color;
             playerTypes = data.playerTypes;
+            if (data.colors) {
+                setupBoardGeometry(data.colors.length);
+            }
             
             // Send client name to host
             const onlineName = document.getElementById('online-player-name').value.trim() || 'Guest';
@@ -1415,6 +1627,9 @@ function handleClientReceivedData(data) {
             if (data.playerNames) {
                 playerNames = data.playerNames;
             }
+            if (data.colors) {
+                setupBoardGeometry(data.colors.length);
+            }
             updateOnlineLobbyUI();
             break;
             
@@ -1430,6 +1645,12 @@ function handleClientReceivedData(data) {
             if (data.releaseRule) releaseRule = data.releaseRule;
             activePlayersOrder = data.activePlayersOrder;
             currentTurnColor = data.currentTurnColor;
+            
+            if (data.colors) {
+                setupBoardGeometry(data.colors.length);
+            } else {
+                setupBoardGeometry(4);
+            }
             
             initBoardDOM();
             document.getElementById('setup-screen').classList.add('hidden');
@@ -1455,6 +1676,10 @@ function handleClientReceivedData(data) {
             if (data.state.tokensCount) tokensCount = data.state.tokensCount;
             if (data.state.releaseRule) releaseRule = data.state.releaseRule;
             
+            if (data.state.colors) {
+                setupBoardGeometry(data.state.colors.length);
+            }
+            
             setupNextActionInterface();
             break;
             
@@ -1475,7 +1700,7 @@ function handleClientReceivedData(data) {
         case 'ANIMATE_STEP':
             getAudio().playStep(data.stepVal);
             break;
-
+ 
         case 'CHAT_MSG':
             logMessage(data.text, data.color);
             break;
@@ -1553,7 +1778,8 @@ function broadcastGameState() {
             playerTypes: playerTypes,
             playerNames: playerNames,
             tokensCount: tokensCount,
-            releaseRule: releaseRule
+            releaseRule: releaseRule,
+            colors: colors
         }
     };
     
@@ -1567,6 +1793,14 @@ function broadcastGameState() {
 function startOnlineGame() {
     if (!isOnline || !isHost) return;
     
+    // Read Board Mode
+    const boardModeSelect = document.getElementById('board-mode-select');
+    let boardMode = 4;
+    if (boardModeSelect) {
+        boardMode = parseInt(boardModeSelect.value, 10) || 4;
+    }
+    setupBoardGeometry(boardMode);
+
     activePlayersOrder = colors.filter(c => playerTypes[c] !== 'off');
     if (activePlayersOrder.length < 2) {
         alert("Lobby needs at least 2 active players to initiate!");
@@ -1593,7 +1827,8 @@ function startOnlineGame() {
                 tokensCount: tokensCount,
                 releaseRule: releaseRule,
                 activePlayersOrder: activePlayersOrder,
-                currentTurnColor: currentTurnColor
+                currentTurnColor: currentTurnColor,
+                colors: colors
             });
         }
     });
@@ -1602,11 +1837,16 @@ function startOnlineGame() {
 }
 
 function updateOnlineLobbyUI() {
-    colors.forEach(color => {
+    allColors.forEach(color => {
         const pill = document.getElementById(`slot-pill-${color}`);
         const nameSpan = document.getElementById(`slot-name-${color}`);
         if (!pill || !nameSpan) return;
 
+        if (!colors.includes(color)) {
+            pill.classList.add('hidden');
+            return;
+        }
+        pill.classList.remove('hidden');
         pill.className = `player-slot-pill pill-${color}`;
 
         if (playerTypes[color] === 'human') {
@@ -1679,14 +1919,22 @@ function resetOnlineState() {
     const codeInput = document.getElementById('join-code-input');
     if (codeInput) codeInput.value = '';
     
+    setupBoardGeometry(4);
     colors.forEach(c => {
         playerTypes[c] = (c === 'red') ? 'human' : 'ai';
+    });
+    allColors.forEach(c => {
+        if (!colors.includes(c)) {
+            playerTypes[c] = 'off';
+        }
     });
     playerNames = {
         red: 'Player 1 (Red)',
         green: 'Player 2 (Green)',
         yellow: 'Player 3 (Yellow)',
-        blue: 'Player 4 (Blue)'
+        blue: 'Player 4 (Blue)',
+        orange: 'Player 5 (Orange)',
+        purple: 'Player 6 (Purple)'
     };
     tokensCount = 4;
     releaseRule = '6';

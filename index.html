@@ -33,7 +33,7 @@
             <div id="local-lobby-container">
                 <div class="player-config-grid">
                     <!-- Red Player Config -->
-                    <div class="config-card player-red-theme">
+                    <div class="config-card player-red-theme" id="config-card-red">
                         <div class="player-color-header">
                             <div class="color-dot red-dot"></div>
                             <h3>Player 1 (Red)</h3>
@@ -58,7 +58,7 @@
                     </div>
 
                     <!-- Green Player Config -->
-                    <div class="config-card player-green-theme">
+                    <div class="config-card player-green-theme" id="config-card-green">
                         <div class="player-color-header">
                             <div class="color-dot green-dot"></div>
                             <h3>Player 2 (Green)</h3>
@@ -83,7 +83,7 @@
                     </div>
 
                     <!-- Yellow Player Config -->
-                    <div class="config-card player-yellow-theme">
+                    <div class="config-card player-yellow-theme" id="config-card-yellow">
                         <div class="player-color-header">
                             <div class="color-dot yellow-dot"></div>
                             <h3>Player 3 (Yellow)</h3>
@@ -108,7 +108,7 @@
                     </div>
 
                     <!-- Blue Player Config -->
-                    <div class="config-card player-blue-theme">
+                    <div class="config-card player-blue-theme" id="config-card-blue">
                         <div class="player-color-header">
                             <div class="color-dot blue-dot"></div>
                             <h3>Player 4 (Blue)</h3>
@@ -131,12 +131,70 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- Orange Player Config -->
+                    <div class="config-card player-orange-theme hidden" id="config-card-orange">
+                        <div class="player-color-header">
+                            <div class="color-dot orange-dot"></div>
+                            <h3>Player 5 (Orange)</h3>
+                        </div>
+                        <div class="name-input-wrapper">
+                            <input type="text" id="name-orange" class="player-name-input" value="Player 5" placeholder="Enter Name">
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-orange" value="human">
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-orange" value="ai" checked>
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-orange" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Purple Player Config -->
+                    <div class="config-card player-purple-theme hidden" id="config-card-purple">
+                        <div class="player-color-header">
+                            <div class="color-dot purple-dot"></div>
+                            <h3>Player 6 (Purple)</h3>
+                        </div>
+                        <div class="name-input-wrapper">
+                            <input type="text" id="name-purple" class="player-name-input" value="Player 6" placeholder="Enter Name">
+                        </div>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="p-purple" value="human">
+                                <span class="custom-radio">Human</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-purple" value="ai" checked>
+                                <span class="custom-radio">Computer AI</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="p-purple" value="off">
+                                <span class="custom-radio">Off</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Game Settings Panel -->
                 <div class="settings-container">
                     <h3 class="settings-title">GAME SETTINGS</h3>
                     <div class="settings-grid">
+                        <div class="settings-item">
+                            <label for="board-mode-select">Game Board Mode</label>
+                            <select id="board-mode-select" class="custom-select">
+                                <option value="4" selected>4 Players (Classic)</option>
+                                <option value="5">5 Players (Star Arena)</option>
+                                <option value="6">6 Players (Neon Hexagon)</option>
+                            </select>
+                        </div>
                         <div class="settings-item">
                             <label for="tokens-count-select">Tokens per Player</label>
                             <select id="tokens-count-select" class="custom-select">
@@ -215,6 +273,14 @@
                         <div class="player-slot-pill pill-blue empty-slot" id="slot-pill-blue">
                             <span class="slot-color-dot blue-bg"></span>
                             <span class="slot-player-name" id="slot-name-blue">Player 4 (Blue): AI Bot</span>
+                        </div>
+                        <div class="player-slot-pill pill-orange empty-slot hidden" id="slot-pill-orange">
+                            <span class="slot-color-dot orange-bg"></span>
+                            <span class="slot-player-name" id="slot-name-orange">Player 5 (Orange): AI Bot</span>
+                        </div>
+                        <div class="player-slot-pill pill-purple empty-slot hidden" id="slot-pill-purple">
+                            <span class="slot-color-dot purple-bg"></span>
+                            <span class="slot-player-name" id="slot-name-purple">Player 6 (Purple): AI Bot</span>
                         </div>
                     </div>
                     <div class="online-start-actions">
@@ -297,75 +363,39 @@
                             <div class="history-list" id="history-blue"></div>
                         </div>
                     </div>
+
+                    <!-- Orange Player Scorecard -->
+                    <div class="player-status-card player-orange-card glass-panel hidden" id="card-orange">
+                        <div class="status-header">
+                            <div class="status-color-bar orange-bg"></div>
+                            <span class="player-name">Player 5 (Orange)</span>
+                            <span class="player-type-badge orange-badge">AI</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-orange" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-orange"></div>
+                        </div>
+                    </div>
+
+                    <!-- Purple Player Scorecard -->
+                    <div class="player-status-card player-purple-card glass-panel hidden" id="card-purple">
+                        <div class="status-header">
+                            <div class="status-color-bar purple-bg"></div>
+                            <span class="player-name">Player 6 (Purple)</span>
+                            <span class="player-type-badge purple-badge">AI</span>
+                        </div>
+                        <div class="status-body">
+                            <div class="home-stat">Tokens Home: <span id="home-purple" class="stat-num">0/4</span></div>
+                            <div class="history-list" id="history-purple"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Center Column: Ludo Board Grid -->
                 <div class="board-column">
                     <div class="board-wrapper glass-panel">
                         <div id="ludo-board" class="ludo-board">
-                            <!-- Bases and central home triangles are static layout structural elements -->
-                            
-                            <!-- Red Base -->
-                            <div class="base red-base" id="base-red">
-                                <div class="base-inner">
-                                    <div class="token-slot red-slot" id="slot-red-0"></div>
-                                    <div class="token-slot red-slot" id="slot-red-1"></div>
-                                    <div class="token-slot red-slot" id="slot-red-2"></div>
-                                    <div class="token-slot red-slot" id="slot-red-3"></div>
-                                </div>
-                            </div>
-
-                            <!-- Green Base -->
-                            <div class="base green-base" id="base-green">
-                                <div class="base-inner">
-                                    <div class="token-slot green-slot" id="slot-green-0"></div>
-                                    <div class="token-slot green-slot" id="slot-green-1"></div>
-                                    <div class="token-slot green-slot" id="slot-green-2"></div>
-                                    <div class="token-slot green-slot" id="slot-green-3"></div>
-                                </div>
-                            </div>
-
-                            <!-- Blue Base -->
-                            <div class="base blue-base" id="base-blue">
-                                <div class="base-inner">
-                                    <div class="token-slot blue-slot" id="slot-blue-0"></div>
-                                    <div class="token-slot blue-slot" id="slot-blue-1"></div>
-                                    <div class="token-slot blue-slot" id="slot-blue-2"></div>
-                                    <div class="token-slot blue-slot" id="slot-blue-3"></div>
-                                </div>
-                            </div>
-
-                            <!-- Yellow Base -->
-                            <div class="base yellow-base" id="base-yellow">
-                                <div class="base-inner">
-                                    <div class="token-slot yellow-slot" id="slot-yellow-0"></div>
-                                    <div class="token-slot yellow-slot" id="slot-yellow-1"></div>
-                                    <div class="token-slot yellow-slot" id="slot-yellow-2"></div>
-                                    <div class="token-slot yellow-slot" id="slot-yellow-3"></div>
-                                </div>
-                            </div>
-
-                            <!-- Home Area (Center Triangles) -->
-                            <div class="home-center">
-                                <!-- Inline SVG for responsive center meeting point triangles -->
-                                <svg class="home-triangles-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                    <polygon points="0,0 50,50 0,100" class="svg-triangle-red" />
-                                    <polygon points="0,0 50,50 100,0" class="svg-triangle-green" />
-                                    <polygon points="100,0 50,50 100,100" class="svg-triangle-yellow" />
-                                    <polygon points="0,100 50,50 100,100" class="svg-triangle-blue" />
-                                </svg>
-                                <div class="home-triangle triangle-red"></div>
-                                <div class="home-triangle triangle-green"></div>
-                                <div class="home-triangle triangle-yellow"></div>
-                                <div class="home-triangle triangle-blue"></div>
-                                <div class="center-star-badge">
-                                    <svg viewBox="0 0 24 24" width="28" height="28">
-                                        <path fill="#ffffff" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
-                                    </svg>
-                                </div>
-                            </div>
-
-                            <!-- Remaining path cells will be generated programmatically in CSS Grid in JS -->
+                            <!-- All board elements generated programmatically in game.js -->
                         </div>
                     </div>
                 </div>
@@ -468,6 +498,6 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="audio.js"></script>
-    <script src="game.js?v=4"></script>
+    <script src="game.js?v=5"></script>
 </body>
 </html>
