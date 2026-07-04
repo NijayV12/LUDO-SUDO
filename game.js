@@ -477,11 +477,7 @@ function renderBoard() {
                     tokenDiv.style.color = `var(--color-${color})`;
                     tokenDiv.style.cursor = 'pointer';
                     tokenDiv.style.pointerEvents = 'auto';
-                    // Use capturing to ensure click fires even through parent containers
-                    tokenDiv.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        handleTokenClick(color, tokenId);
-                    });
+                    // NOTE: No individual click listener here — board-level delegate handles all clicks
                 }
             }
 
@@ -739,31 +735,33 @@ function handleRollResult(roll) {
 }
 
 // Token click action callback (Human)
+let _pendingMove = false; // guard against double-fire
 async function handleTokenClick(color, tokenId) {
+    if (_pendingMove) return;
     if (gamePhase !== PHASE_MOVE || color !== currentTurnColor || playerTypes[color] !== 'human' || isAnimating) return;
     if (isOnline && color !== myColor) return;
 
     if (isOnline && !isHost) {
         if (color === myColor && canTokenMove(color, tokenId, currentRoll)) {
-            // Send request to host
-            hostConn.send({
-                type: 'REQUEST_MOVE',
-                tokenId: tokenId
+            hostConn.send({ type: 'REQUEST_MOVE', tokenId: tokenId });
+            document.querySelectorAll('.token.movable').forEach(t => {
+                t.classList.remove('movable');
+                t.style.cursor = 'default';
             });
-            // Turn off movable classes locally to prevent double clicks
-            const movables = document.querySelectorAll('.token.movable');
-            movables.forEach(t => t.classList.remove('movable'));
         }
         return;
     }
 
     if (canTokenMove(color, tokenId, currentRoll)) {
-        // Immediately remove movable highlights to prevent double-click
+        _pendingMove = true;
+        // Immediately remove all movable highlights to prevent any second click
         document.querySelectorAll('.token.movable').forEach(t => {
             t.classList.remove('movable');
             t.style.cursor = 'default';
+            t.style.pointerEvents = 'none';
         });
         await executeMove(color, tokenId, currentRoll);
+        _pendingMove = false;
     }
 }
 
