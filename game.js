@@ -20,6 +20,7 @@ let safeCellIndices = [];
 let playerPaths = {};
 let baseCoordinates = {};
 let homeTokenCoordinates = {};
+let lastInitializedBoardMode = null;
 
 function setupBoardGeometry(numPlayers) {
     colors = allColors.slice(0, numPlayers);
@@ -189,6 +190,12 @@ function initBoardDOM() {
     const boardEl = document.getElementById('ludo-board');
     if (!boardEl) return;
     
+    // Skip rebuilding if layout is already generated for the active player count
+    if (lastInitializedBoardMode === colors.length && boardEl.querySelector('.cell')) {
+        return;
+    }
+    lastInitializedBoardMode = colors.length;
+
     boardEl.innerHTML = ''; // Clear static layout structures
 
     // 1. Create dynamic bases and token slots
@@ -1115,7 +1122,7 @@ function createScoreboardFloatingText(anchorElement, text, colorCode) {
 function startLudoGame(override = false) {
     if (!override && !isOnline) {
         // Read Game Board Mode
-        const boardModeSelect = document.getElementById('board-mode-select');
+        const boardModeSelect = document.getElementById('local-board-mode-select');
         let boardMode = 4;
         if (boardModeSelect) {
             boardMode = parseInt(boardModeSelect.value, 10) || 4;
@@ -1142,11 +1149,11 @@ function startLudoGame(override = false) {
         });
 
         // Read game options
-        const tokensSelect = document.getElementById('tokens-count-select');
+        const tokensSelect = document.getElementById('local-tokens-count-select');
         if (tokensSelect) {
             tokensCount = parseInt(tokensSelect.value, 10) || 4;
         }
-        const releaseSelect = document.getElementById('release-rule-select');
+        const releaseSelect = document.getElementById('local-release-rule-select');
         if (releaseSelect) {
             releaseRule = releaseSelect.value || '6';
         }
@@ -1276,7 +1283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Board Mode selector change listener
-    const boardModeSelect = document.getElementById('board-mode-select');
+    const boardModeSelect = document.getElementById('local-board-mode-select');
     if (boardModeSelect) {
         boardModeSelect.addEventListener('change', () => {
             const boardMode = parseInt(boardModeSelect.value, 10) || 4;
@@ -1299,6 +1306,49 @@ document.addEventListener('DOMContentLoaded', () => {
             // Re-setup board geometry for local state reference
             setupBoardGeometry(boardMode);
             updateNameInputStates();
+        });
+    }
+
+    // Online Lobby Settings selector change listeners (Host only)
+    const onlineBoardModeSelect = document.getElementById('online-board-mode-select');
+    if (onlineBoardModeSelect) {
+        onlineBoardModeSelect.addEventListener('change', () => {
+            if (!isOnline || !isHost) return;
+            const boardMode = parseInt(onlineBoardModeSelect.value, 10) || 4;
+            
+            setupBoardGeometry(boardMode);
+            
+            // Adjust player types locally on host
+            colors.forEach(c => {
+                if (playerTypes[c] === 'off') {
+                    playerTypes[c] = 'ai';
+                }
+            });
+            allColors.forEach(c => {
+                if (!colors.includes(c)) {
+                    playerTypes[c] = 'off';
+                }
+            });
+            
+            broadcastLobbyState();
+        });
+    }
+
+    const onlineTokensCountSelect = document.getElementById('online-tokens-count-select');
+    if (onlineTokensCountSelect) {
+        onlineTokensCountSelect.addEventListener('change', () => {
+            if (!isOnline || !isHost) return;
+            tokensCount = parseInt(onlineTokensCountSelect.value, 10) || 4;
+            broadcastLobbyState();
+        });
+    }
+
+    const onlineReleaseRuleSelect = document.getElementById('online-release-rule-select');
+    if (onlineReleaseRuleSelect) {
+        onlineReleaseRuleSelect.addEventListener('change', () => {
+            if (!isOnline || !isHost) return;
+            releaseRule = onlineReleaseRuleSelect.value || '6';
+            broadcastLobbyState();
         });
     }
 
@@ -1469,9 +1519,28 @@ function initHost() {
         statusTxt.textContent = id;
         logMessage(`Host lobby created. Room Code: ${id}`, 'system');
         
+        // Enable online settings dropdowns for host
+        const boardModeSelect = document.getElementById('online-board-mode-select');
+        const tokensSelect = document.getElementById('online-tokens-count-select');
+        const releaseSelect = document.getElementById('online-release-rule-select');
+        if (boardModeSelect) boardModeSelect.disabled = false;
+        if (tokensSelect) tokensSelect.disabled = false;
+        if (releaseSelect) releaseSelect.disabled = false;
+
+        const boardMode = boardModeSelect ? parseInt(boardModeSelect.value, 10) : 4;
+        setupBoardGeometry(boardMode);
+
+        if (tokensSelect) tokensCount = parseInt(tokensSelect.value, 10) || 4;
+        if (releaseSelect) releaseRule = releaseSelect.value || '6';
+
         // Reset player types locally
         colors.forEach(c => {
             playerTypes[c] = (c === 'red') ? 'human' : 'ai';
+        });
+        allColors.forEach(c => {
+            if (!colors.includes(c)) {
+                playerTypes[c] = 'off';
+            }
         });
         
         updateOnlineLobbyUI();
@@ -1516,7 +1585,9 @@ function setupIncomingConnection(conn) {
             type: 'HANDSHAKE',
             color: assignedColor,
             playerTypes: playerTypes,
-            colors: colors
+            colors: colors,
+            tokensCount: tokensCount,
+            releaseRule: releaseRule
         });
 
         broadcastLobbyState();
@@ -1540,7 +1611,9 @@ function broadcastLobbyState() {
         type: 'LOBBY_UPDATE',
         playerTypes: playerTypes,
         playerNames: playerNames,
-        colors: colors
+        colors: colors,
+        tokensCount: tokensCount,
+        releaseRule: releaseRule
     };
     connections.forEach(c => {
         if (c.open) c.send(payload);
@@ -1577,6 +1650,14 @@ function initClient(targetRoomCode) {
             isHost = false;
             joinStatus.textContent = "Connected! Setting up lobby...";
             document.getElementById('lobby-player-list').classList.remove('hidden');
+
+            // Disable online settings dropdowns for clients (read-only)
+            const boardModeSelect = document.getElementById('online-board-mode-select');
+            const tokensSelect = document.getElementById('online-tokens-count-select');
+            const releaseSelect = document.getElementById('online-release-rule-select');
+            if (boardModeSelect) boardModeSelect.disabled = true;
+            if (tokensSelect) tokensSelect.disabled = true;
+            if (releaseSelect) releaseSelect.disabled = true;
         });
 
         hostConn.on('data', (data) => {
@@ -1609,6 +1690,18 @@ function handleClientReceivedData(data) {
             playerTypes = data.playerTypes;
             if (data.colors) {
                 setupBoardGeometry(data.colors.length);
+                const select = document.getElementById('online-board-mode-select');
+                if (select) select.value = data.colors.length;
+            }
+            if (data.tokensCount) {
+                tokensCount = data.tokensCount;
+                const select = document.getElementById('online-tokens-count-select');
+                if (select) select.value = tokensCount;
+            }
+            if (data.releaseRule) {
+                releaseRule = data.releaseRule;
+                const select = document.getElementById('online-release-rule-select');
+                if (select) select.value = releaseRule;
             }
             
             // Send client name to host
@@ -1629,6 +1722,18 @@ function handleClientReceivedData(data) {
             }
             if (data.colors) {
                 setupBoardGeometry(data.colors.length);
+                const select = document.getElementById('online-board-mode-select');
+                if (select) select.value = data.colors.length;
+            }
+            if (data.tokensCount) {
+                tokensCount = data.tokensCount;
+                const select = document.getElementById('online-tokens-count-select');
+                if (select) select.value = tokensCount;
+            }
+            if (data.releaseRule) {
+                releaseRule = data.releaseRule;
+                const select = document.getElementById('online-release-rule-select');
+                if (select) select.value = releaseRule;
             }
             updateOnlineLobbyUI();
             break;
@@ -1680,6 +1785,7 @@ function handleClientReceivedData(data) {
                 setupBoardGeometry(data.state.colors.length);
             }
             
+            initBoardDOM();
             setupNextActionInterface();
             break;
             

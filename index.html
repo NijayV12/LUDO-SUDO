@@ -188,23 +188,23 @@
                     <h3 class="settings-title">GAME SETTINGS</h3>
                     <div class="settings-grid">
                         <div class="settings-item">
-                            <label for="board-mode-select">Game Board Mode</label>
-                            <select id="board-mode-select" class="custom-select">
+                            <label for="local-board-mode-select">Game Board Mode</label>
+                            <select id="local-board-mode-select" class="custom-select">
                                 <option value="4" selected>4 Players (Classic)</option>
                                 <option value="5">5 Players (Star Arena)</option>
                                 <option value="6">6 Players (Neon Hexagon)</option>
                             </select>
                         </div>
                         <div class="settings-item">
-                            <label for="tokens-count-select">Tokens per Player</label>
-                            <select id="tokens-count-select" class="custom-select">
+                            <label for="local-tokens-count-select">Tokens per Player</label>
+                            <select id="local-tokens-count-select" class="custom-select">
                                 <option value="4" selected>Classic (4 Tokens)</option>
                                 <option value="2">Speed (2 Tokens)</option>
                             </select>
                         </div>
                         <div class="settings-item">
-                            <label for="release-rule-select">Release Token On</label>
-                            <select id="release-rule-select" class="custom-select">
+                            <label for="local-release-rule-select">Release Token On</label>
+                            <select id="local-release-rule-select" class="custom-select">
                                 <option value="6" selected>6 Only</option>
                                 <option value="1or6">1 or 6</option>
                             </select>
@@ -283,6 +283,36 @@
                             <span class="slot-player-name" id="slot-name-purple">Player 6 (Purple): AI Bot</span>
                         </div>
                     </div>
+
+                    <!-- Online Settings Panel -->
+                    <div class="settings-container online-settings-container">
+                        <h3 class="settings-title">LOBBY SETTINGS</h3>
+                        <div class="settings-grid">
+                            <div class="settings-item">
+                                <label for="online-board-mode-select">Game Board Mode</label>
+                                <select id="online-board-mode-select" class="custom-select">
+                                    <option value="4" selected>4 Players (Classic)</option>
+                                    <option value="5">5 Players (Star Arena)</option>
+                                    <option value="6">6 Players (Neon Hexagon)</option>
+                                </select>
+                            </div>
+                            <div class="settings-item">
+                                <label for="online-tokens-count-select">Tokens per Player</label>
+                                <select id="online-tokens-count-select" class="custom-select">
+                                    <option value="4" selected>Classic (4 Tokens)</option>
+                                    <option value="2">Speed (2 Tokens)</option>
+                                </select>
+                            </div>
+                            <div class="settings-item">
+                                <label for="online-release-rule-select">Release Token On</label>
+                                <select id="online-release-rule-select" class="custom-select">
+                                    <option value="6" selected>6 Only</option>
+                                    <option value="1or6">1 or 6</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="online-start-actions">
                         <button id="btn-start-online" class="btn primary-btn btn-glow hidden">Start Battle</button>
                         <p id="online-wait-msg" class="lobby-subtext">Waiting for host to start...</p>
@@ -498,6 +528,6 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="audio.js"></script>
-    <script src="game.js?v=5"></script>
+    <script src="game.js?v=6"></script>
 </body>
 </html>
