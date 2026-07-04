@@ -2,6 +2,12 @@ class LudoAudioManager {
     constructor() {
         this.ctx = null;
         this.muted = false;
+        this.musicVolume = 0.15;
+        this.sfxVolume = 0.3;
+        this.musicGainNode = null;
+        this.sfxGainNode = null;
+        this.bassInterval = null;
+        this.musicPlaying = false;
     }
 
     init() {
@@ -11,11 +17,58 @@ class LudoAudioManager {
         if (this.ctx.state === 'suspended') {
             this.ctx.resume();
         }
+        if (!this.musicGainNode) {
+            this.musicGainNode = this.ctx.createGain();
+            this.musicGainNode.gain.setValueAtTime(this.muted ? 0 : this.musicVolume, this.ctx.currentTime);
+            this.musicGainNode.connect(this.ctx.destination);
+        }
+        if (!this.sfxGainNode) {
+            this.sfxGainNode = this.ctx.createGain();
+            this.sfxGainNode.gain.setValueAtTime(this.muted ? 0 : this.sfxVolume, this.ctx.currentTime);
+            this.sfxGainNode.connect(this.ctx.destination);
+        }
     }
 
     toggleMute() {
         this.muted = !this.muted;
+        const targetMusicVol = this.muted ? 0 : this.musicVolume;
+        const targetSfxVol = this.muted ? 0 : this.sfxVolume;
+        if (this.musicGainNode) {
+            this.musicGainNode.gain.setValueAtTime(targetMusicVol, this.ctx.currentTime);
+        }
+        if (this.sfxGainNode) {
+            this.sfxGainNode.gain.setValueAtTime(targetSfxVol, this.ctx.currentTime);
+        }
         return this.muted;
+    }
+
+    setMusicVolume(vol) {
+        this.musicVolume = vol;
+        if (this.musicGainNode) {
+            this.musicGainNode.gain.setTargetAtTime(this.muted ? 0 : vol, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    setSfxVolume(vol) {
+        this.sfxVolume = vol;
+        if (this.sfxGainNode) {
+            this.sfxGainNode.gain.setTargetAtTime(this.muted ? 0 : vol, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    startMusic() {
+        this.init();
+        if (this.musicPlaying) return;
+        this.musicPlaying = true;
+        this.playSynthwaveLoop();
+    }
+
+    stopMusic() {
+        this.musicPlaying = false;
+        if (this.bassInterval) {
+            clearInterval(this.bassInterval);
+            this.bassInterval = null;
+        }
     }
 
     createOscillator(type, freq, duration, gainStart, gainEnd = 0.001) {
@@ -32,7 +85,7 @@ class LudoAudioManager {
         gainNode.gain.exponentialRampToValueAtTime(gainEnd, this.ctx.currentTime + duration);
 
         osc.connect(gainNode);
-        gainNode.connect(this.ctx.destination);
+        gainNode.connect(this.sfxGainNode || this.ctx.destination);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
@@ -44,7 +97,6 @@ class LudoAudioManager {
         if (this.muted) return;
         this.init();
 
-        // Dice roll sound: create a rapid series of short clicking sounds (a brief noise-like effect)
         const duration = 0.4;
         const steps = 6;
         const now = this.ctx.currentTime;
@@ -55,7 +107,6 @@ class LudoAudioManager {
             const osc = this.ctx.createOscillator();
             const gainNode = this.ctx.createGain();
             
-            // Random high frequency for a click/shake sound
             osc.frequency.setValueAtTime(1000 + Math.random() * 2000, time);
             osc.type = 'triangle';
             
@@ -63,7 +114,7 @@ class LudoAudioManager {
             gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
             
             osc.connect(gainNode);
-            gainNode.connect(this.ctx.destination);
+            gainNode.connect(this.sfxGainNode || this.ctx.destination);
             
             osc.start(time);
             osc.stop(time + 0.05);
@@ -71,8 +122,6 @@ class LudoAudioManager {
     }
 
     playStep(stepIndex = 0) {
-        // A clean, bouncy plop sound
-        // Increase pitch slightly with higher stepIndex to make moving feel progressive
         const baseFreq = 261.63; // C4
         const freqMultiplier = 1 + (stepIndex % 12) * 0.08;
         const targetFreq = baseFreq * freqMultiplier;
@@ -80,13 +129,11 @@ class LudoAudioManager {
         const duration = 0.12;
         const sound = this.createOscillator('sine', targetFreq, duration, 0.2);
         if (sound) {
-            // Add a slight frequency sweep
             sound.osc.frequency.exponentialRampToValueAtTime(targetFreq * 1.5, this.ctx.currentTime + duration);
         }
     }
 
     playRelease() {
-        // Uplifting sound: two quick, high chime-like notes (arpeggio)
         if (this.muted) return;
         this.init();
 
@@ -105,7 +152,7 @@ class LudoAudioManager {
             gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
 
             osc.connect(gainNode);
-            gainNode.connect(this.ctx.destination);
+            gainNode.connect(this.sfxGainNode || this.ctx.destination);
 
             osc.start(time);
             osc.stop(time + 0.25);
@@ -113,7 +160,6 @@ class LudoAudioManager {
     }
 
     playCapture() {
-        // Falling retro explosion sound
         if (this.muted) return;
         this.init();
 
@@ -124,7 +170,6 @@ class LudoAudioManager {
         const oscNoise = this.ctx.createOscillator();
         const gainNode = this.ctx.createGain();
 
-        // Pitch slide down from high to low
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(600, now);
         osc.frequency.exponentialRampToValueAtTime(80, now + duration);
@@ -138,7 +183,7 @@ class LudoAudioManager {
 
         osc.connect(gainNode);
         oscNoise.connect(gainNode);
-        gainNode.connect(this.ctx.destination);
+        gainNode.connect(this.sfxGainNode || this.ctx.destination);
 
         osc.start(now);
         oscNoise.start(now);
@@ -148,7 +193,6 @@ class LudoAudioManager {
     }
 
     playHome() {
-        // Happy little trumpet fanfare: standard chord C-E-G-C (high)
         if (this.muted) return;
         this.init();
 
@@ -172,7 +216,7 @@ class LudoAudioManager {
                 gainNode.gain.exponentialRampToValueAtTime(0.001, playTime + 0.35);
 
                 osc.connect(gainNode);
-                gainNode.connect(this.ctx.destination);
+                gainNode.connect(this.sfxGainNode || this.ctx.destination);
 
                 osc.start(playTime);
                 osc.stop(playTime + 0.35);
@@ -181,14 +225,12 @@ class LudoAudioManager {
     }
 
     playWin() {
-        // Orchestral arpeggiated triumph fanfare
         if (this.muted) return;
         this.init();
 
         const now = this.ctx.currentTime;
         const duration = 0.8;
         
-        // A nice major arpeggio scaling up
         const scale = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
         
         scale.forEach((freq, idx) => {
@@ -199,11 +241,10 @@ class LudoAudioManager {
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, time);
 
-            // Add frequency vibrato
             const vibrato = this.ctx.createOscillator();
             const vibratoGain = this.ctx.createGain();
-            vibrato.frequency.value = 8; // 8Hz vibrato
-            vibratoGain.gain.value = 10; // pitch variation
+            vibrato.frequency.value = 8;
+            vibratoGain.gain.value = 10;
 
             vibrato.connect(vibratoGain);
             vibratoGain.connect(osc.frequency);
@@ -212,7 +253,7 @@ class LudoAudioManager {
             gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
 
             osc.connect(gainNode);
-            gainNode.connect(this.ctx.destination);
+            gainNode.connect(this.sfxGainNode || this.ctx.destination);
 
             vibrato.start(time);
             osc.start(time);
@@ -221,8 +262,81 @@ class LudoAudioManager {
             osc.stop(time + duration);
         });
     }
+
+    playSynthwaveLoop() {
+        let step = 0;
+        const notes = [
+            110.00, 110.00, 130.81, 130.81,
+            98.00, 98.00, 87.31, 87.31
+        ];
+
+        const playBassTone = (freq, duration) => {
+            if (!this.musicPlaying || this.muted) return;
+            try {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration - 0.02);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.musicGainNode);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch(e) {
+                console.error("Synth play error:", e);
+            }
+        };
+
+        const playPadTone = (freqs, duration) => {
+            if (!this.musicPlaying || this.muted) return;
+            try {
+                freqs.forEach(f => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, this.ctx.currentTime);
+                    
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.02, this.ctx.currentTime + 0.8);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration - 0.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.musicGainNode);
+                    
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                });
+            } catch(e) {
+                console.error("Synth play error:", e);
+            }
+        };
+
+        this.bassInterval = setInterval(() => {
+            if (!this.musicPlaying || this.muted) return;
+            const currentFreq = notes[step % notes.length];
+            playBassTone(currentFreq, 0.35);
+
+            if (step % 8 === 0) {
+                if (step % 16 === 0) {
+                    playPadTone([220, 261.63, 329.63], 3.0);
+                } else {
+                    playPadTone([174.61, 220, 261.63], 3.0);
+                }
+            }
+            step++;
+        }, 400);
+    }
 }
 
-// Export a single instance to be used by game.js
 const audioManager = new LudoAudioManager();
-window.audioManager = audioManager; // attach to window for global access
+window.audioManager = audioManager;

@@ -41,6 +41,13 @@
                         <div class="name-input-wrapper">
                             <input type="text" id="name-red" class="player-name-input" value="Player 1" placeholder="Enter Name">
                         </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-red" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
+                        </div>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="p-red" value="human" checked>
@@ -65,6 +72,13 @@
                         </div>
                         <div class="name-input-wrapper">
                             <input type="text" id="name-green" class="player-name-input" value="Player 2" placeholder="Enter Name">
+                        </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-green" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
                         </div>
                         <div class="radio-group">
                             <label class="radio-label">
@@ -91,6 +105,13 @@
                         <div class="name-input-wrapper">
                             <input type="text" id="name-yellow" class="player-name-input" value="Player 3" placeholder="Enter Name">
                         </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-yellow" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
+                        </div>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="p-yellow" value="human">
@@ -115,6 +136,13 @@
                         </div>
                         <div class="name-input-wrapper">
                             <input type="text" id="name-blue" class="player-name-input" value="Player 4" placeholder="Enter Name">
+                        </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-blue" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
                         </div>
                         <div class="radio-group">
                             <label class="radio-label">
@@ -141,6 +169,13 @@
                         <div class="name-input-wrapper">
                             <input type="text" id="name-orange" class="player-name-input" value="Player 5" placeholder="Enter Name">
                         </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-orange" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
+                        </div>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="p-orange" value="human">
@@ -165,6 +200,13 @@
                         </div>
                         <div class="name-input-wrapper">
                             <input type="text" id="name-purple" class="player-name-input" value="Player 6" placeholder="Enter Name">
+                        </div>
+                        <div class="difficulty-wrapper">
+                            <select id="difficulty-purple" class="custom-select difficulty-select">
+                                <option value="easy">Easy Bot</option>
+                                <option value="balanced" selected>Balanced Bot</option>
+                                <option value="aggressive">Aggressive Bot</option>
+                            </select>
                         </div>
                         <div class="radio-group">
                             <label class="radio-label">
@@ -335,6 +377,11 @@
                             <path fill="currentColor" d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.77 16.5,12M3,9V15H7L12,20V4L7,9H3Z" />
                         </svg>
                     </button>
+                    <button id="audio-settings-btn" class="icon-btn" title="Audio Settings">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.47,5.34 14.86,5.08L14.48,2.42C14.44,2.18 14.23,2 14,2H10C9.77,2 9.56,2.18 9.52,2.42L9.14,5.08C8.53,5.34 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.95C7.96,18.34 8.53,18.66 9.14,18.92L9.52,21.58C9.56,21.82 9.77,22 10,22H14C14.23,22 14.44,21.82 14.48,21.58L14.86,18.92C15.47,18.66 16.04,18.34 16.56,17.95L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                        </svg>
+                    </button>
                     <button id="game-rules-btn" class="btn secondary-btn compact-btn">Rules</button>
                     <button id="restart-btn" class="btn warning-btn compact-btn">Reset Board</button>
                 </div>
@@ -474,6 +521,19 @@
                         </div>
                     </div>
 
+                    <!-- Quick Chat Reactions -->
+                    <div class="quick-chat-card glass-panel">
+                        <h3 class="quick-chat-title">Battle Reactions</h3>
+                        <div class="quick-chat-grid">
+                            <button class="chat-reaction-btn" data-msg="Nice move! 🔥">🔥</button>
+                            <button class="chat-reaction-btn" data-msg="Gotcha! ⚔️">⚔️</button>
+                            <button class="chat-reaction-btn" data-msg="Oh no! 😢">😢</button>
+                            <button class="chat-reaction-btn" data-msg="Lucky roll! 🎲">🎲</button>
+                            <button class="chat-reaction-btn" data-msg="GG! 🏆">🏆</button>
+                            <button class="chat-reaction-btn" data-msg="Hurry up! ⚡">⚡</button>
+                        </div>
+                    </div>
+
                     <!-- Scrollable Logs -->
                     <div class="logs-card glass-panel">
                         <h3>Arena Logs</h3>
@@ -517,6 +577,43 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn primary-btn" id="close-rules-footer-btn">Got It!</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- GAME & AUDIO SETTINGS MODAL -->
+        <div id="audio-settings-modal" class="modal hidden">
+            <div class="modal-content glass-panel" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2>Game & Audio Settings</h2>
+                    <button class="close-btn" id="close-audio-btn">&times;</button>
+                </div>
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px;">
+                    <div class="settings-item">
+                        <label for="music-volume-slider">Background Music</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="music-volume-slider" min="0" max="1" step="0.05" value="0.15" style="flex: 1;">
+                            <span id="music-vol-txt">15%</span>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <label for="sfx-volume-slider">Sound Effects (SFX)</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="sfx-volume-slider" min="0" max="1" step="0.05" value="0.30" style="flex: 1;">
+                            <span id="sfx-vol-txt">30%</span>
+                        </div>
+                    </div>
+                    <div class="settings-item">
+                        <label for="dice-skin-select">Dice Visual Skin</label>
+                        <select id="dice-skin-select" class="custom-select" style="width: 100%;">
+                            <option value="hologram" selected>Neon Hologram</option>
+                            <option value="chromeglass">Chrome Glass</option>
+                            <option value="matrix">Cyberpunk Matrix</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top: 15px;">
+                    <button class="btn primary-btn" id="close-audio-footer-btn">Close</button>
                 </div>
             </div>
         </div>

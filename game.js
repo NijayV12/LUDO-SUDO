@@ -149,6 +149,7 @@ function setupBoardGeometry(numPlayers) {
 
 // 2. Game State
 let playerTypes = { red: 'human', green: 'ai', yellow: 'ai', blue: 'ai', orange: 'ai', purple: 'ai' };
+let playerDifficulties = { red: 'balanced', green: 'balanced', yellow: 'balanced', blue: 'balanced', orange: 'balanced', purple: 'balanced' };
 let playerNames = {
     red: 'Player 1 (Red)',
     green: 'Player 2 (Green)',
@@ -344,6 +345,18 @@ function initBoardDOM() {
             boardEl.appendChild(cellDiv);
         }
     });
+
+    // 6. Create effects canvas overlay
+    const canvas = document.createElement('canvas');
+    canvas.id = 'effects-canvas';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '15';
+    boardEl.appendChild(canvas);
 }
 
 function getSafeColor(perimeterIdx) {
@@ -916,17 +929,24 @@ function triggerAIMove() {
         return;
     }
 
-    // AI selects best token
-    let bestTokenId = validTokenIds[0];
-    let bestScore = -Infinity;
+    const difficulty = playerDifficulties[currentTurnColor] || 'balanced';
+    let bestTokenId;
 
-    validTokenIds.forEach(id => {
-        const score = evaluateAIMove(currentTurnColor, id, currentRoll);
-        if (score > bestScore) {
-            bestScore = score;
-            bestTokenId = id;
-        }
-    });
+    if (difficulty === 'easy') {
+        const randomIndex = Math.floor(Math.random() * validTokenIds.length);
+        bestTokenId = validTokenIds[randomIndex];
+    } else {
+        bestTokenId = validTokenIds[0];
+        let bestScore = -Infinity;
+
+        validTokenIds.forEach(id => {
+            const score = evaluateAIMove(currentTurnColor, id, currentRoll);
+            if (score > bestScore) {
+                bestScore = score;
+                bestTokenId = id;
+            }
+        });
+    }
 
     executeMove(currentTurnColor, bestTokenId, currentRoll);
 }
@@ -938,6 +958,7 @@ function evaluateAIMove(color, tokenId, roll) {
     const nextStep = (currentStep === -1) ? 0 : currentStep + roll;
     
     let score = 0;
+    const diff = playerDifficulties[color] || 'balanced';
 
     const nextIdx = (colorStartIndices[color] + nextStep) % perimeterCoordinates.length;
 
@@ -950,7 +971,11 @@ function evaluateAIMove(color, tokenId, roll) {
                 if (othToken.step >= 0 && othToken.step < 51) {
                     const othIdx = (colorStartIndices[otherColor] + othToken.step) % perimeterCoordinates.length;
                     if (othIdx === nextIdx) {
-                        score += 1200; // Super high rating for capture
+                        if (diff === 'aggressive') {
+                            score += 2500; // Extra aggressive capture priority!
+                        } else {
+                            score += 1200; // Standard capture
+                        }
                     }
                 }
             });
@@ -959,29 +984,35 @@ function evaluateAIMove(color, tokenId, roll) {
 
     // 2. Reach home center
     if (nextStep === 56) {
-        score += 1000;
+        if (diff === 'aggressive') {
+            score += 500; // Aggressive bots prefer chasing/capturing over finishing quickly
+        } else {
+            score += 1000;
+        }
     }
 
     // 3. Release token from base
     const canRelease = (releaseRule === '1or6') ? (roll === 1 || roll === 6) : (roll === 6);
     if (currentStep === -1 && canRelease) {
-        // Count how many tokens are currently active on the track
         const activeCount = players[color].tokens.filter(t => t.step >= 0 && t.step < 56).length;
         if (activeCount === 0) {
-            score += 800; // Crucial to release first token
+            score += (diff === 'aggressive') ? 1200 : 800; // Aggressive releases immediately
         } else {
-            score += 450; // Still good to get more out
+            score += (diff === 'aggressive') ? 600 : 450;
         }
     }
 
     // 4. Enter safe zone
     const currentIdx = currentStep >= 0 ? (colorStartIndices[color] + currentStep) % perimeterCoordinates.length : -1;
     if (nextStep < 51 && isSafeCell(nextIdx) && (currentStep === -1 || !isSafeCell(currentIdx))) {
-        score += 300;
+        if (diff === 'aggressive') {
+            score -= 100; // Aggressive bots penalize hiding in safe zones
+        } else {
+            score += 300;
+        }
     }
 
     // 5. Escape danger
-    // Check if an opponent is behind this token within 6 steps
     if (currentStep >= 0 && currentStep < 51 && !isSafeCell(currentIdx)) {
         let isThreatened = false;
         
@@ -990,7 +1021,6 @@ function evaluateAIMove(color, tokenId, roll) {
             
             players[otherColor].tokens.forEach(othToken => {
                 if (othToken.step >= 0 && othToken.step < 51) {
-                    // Trace paths of other players to see if they can reach our current cell
                     const dist = getStepsAway(otherColor, othToken.step, color, currentStep);
                     if (dist > 0 && dist <= 6) {
                         isThreatened = true;
@@ -1000,7 +1030,11 @@ function evaluateAIMove(color, tokenId, roll) {
         }
 
         if (isThreatened) {
-            score += 400; // Move threatened tokens away!
+            if (diff === 'aggressive') {
+                score += 100; // Care less about escape, prioritize forward attack/chase
+            } else {
+                score += 400;
+            }
         }
     }
 
@@ -1026,61 +1060,107 @@ function getStepsAway(colorA, stepA, colorB, stepB) {
     return (idxB - idxA + N) % N;
 }
 
-// 7. Premium Visual Feedback: Particles & Text Splashes
+// 7. Premium Visual Feedback: HTML5 Canvas Particles & Text Splashes
+let canvasParticles = [];
+let particleAnimId = null;
+
+class CanvasParticle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.size = Math.random() * 3 + 2;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.02 + 0.015;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
 function createFloatingParticles(cellEl, colorCode, count = 12) {
     if (!cellEl) return;
     const boardEl = document.getElementById('ludo-board');
-    if (!boardEl) return;
-    
+    const canvas = document.getElementById('effects-canvas');
+    if (!boardEl || !canvas) return;
+
     const rect = cellEl.getBoundingClientRect();
     const boardRect = boardEl.getBoundingClientRect();
-    
-    // Relative coordinates inside ludo-board container
-    const x = rect.left - boardRect.left + (rect.width / 2);
-    const y = rect.top - boardRect.top + (rect.height / 2);
-    
-    for (let i = 0; i < count; i++) {
-        const particle = document.createElement('div');
-        particle.style.position = 'absolute';
-        particle.style.left = `${x}px`;
-        particle.style.top = `${y}px`;
-        particle.style.width = `${Math.floor(Math.random()*6) + 4}px`;
-        particle.style.height = particle.style.width;
-        particle.style.borderRadius = '50%';
-        particle.style.background = colorCode;
-        particle.style.boxShadow = `0 0 8px ${colorCode}`;
-        particle.style.pointerEvents = 'none';
-        particle.style.zIndex = '500';
-        
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 80 + 40;
-        const vx = Math.cos(angle) * speed;
-        const vy = Math.sin(angle) * speed;
-        
-        boardEl.appendChild(particle);
-        
-        const startTime = performance.now();
-        const duration = 800; // 0.8s life
-        
-        function animateParticle(now) {
-            const elapsed = now - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // Apply speed + gravity drift
-            const currX = x + (vx * progress * 0.01) * 10;
-            const currY = y + (vy * progress * 0.01) * 10 + (progress * progress * 40); // gravity fall
-            
-            particle.style.transform = `translate(${currX - x}px, ${currY - y}px)`;
-            particle.style.opacity = 1 - progress;
-            
-            if (progress < 1) {
-                requestAnimationFrame(animateParticle);
-            } else {
-                particle.remove();
-            }
-        }
-        requestAnimationFrame(animateParticle);
+
+    // Map position relative to board width/height to canvas coordinate space
+    const scaleX = canvas.width / boardRect.width;
+    const scaleY = canvas.height / boardRect.height;
+    const x = (rect.left - boardRect.left + (rect.width / 2)) * scaleX;
+    const y = (rect.top - boardRect.top + (rect.height / 2)) * scaleY;
+
+    // Resolve CSS variables
+    let finalColor = colorCode;
+    if (colorCode.startsWith('var(')) {
+        const cleanName = colorCode.substring(4, colorCode.length - 1).trim();
+        finalColor = getComputedStyle(document.documentElement).getPropertyValue(cleanName).trim() || '#ffffff';
     }
+
+    for (let i = 0; i < count; i++) {
+        canvasParticles.push(new CanvasParticle(x, y, finalColor));
+    }
+
+    triggerCanvasParticleLoop();
+}
+
+function triggerCanvasParticleLoop() {
+    if (particleAnimId) return;
+
+    const loop = () => {
+        const canvas = document.getElementById('effects-canvas');
+        if (!canvas) {
+            particleAnimId = null;
+            return;
+        }
+
+        if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        canvasParticles = canvasParticles.filter(p => p.alpha > 0);
+
+        canvasParticles.forEach(p => {
+            p.update();
+            p.draw(ctx);
+        });
+
+        if (canvasParticles.length > 0) {
+            particleAnimId = requestAnimationFrame(loop);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particleAnimId = null;
+        }
+    };
+
+    particleAnimId = requestAnimationFrame(loop);
+}
 }
 
 function createScoreboardFloatingText(anchorElement, text, colorCode) {
@@ -1131,6 +1211,31 @@ function createScoreboardFloatingText(anchorElement, text, colorCode) {
     requestAnimationFrame(animateText);
 }
 
+function displayFloatingChat(color, message) {
+    const cardEl = document.getElementById(`card-${color}`);
+    if (!cardEl) return;
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'floating-chat-bubble';
+    bubble.textContent = message;
+    
+    const rect = cardEl.getBoundingClientRect();
+    const x = rect.left + window.scrollX + (rect.width / 2);
+    const y = rect.top + window.scrollY - 15;
+    
+    bubble.style.left = `${x}px`;
+    bubble.style.top = `${y}px`;
+    bubble.style.transform = 'translateX(-50%)';
+    bubble.style.borderColor = `var(--color-${color})`;
+    bubble.style.boxShadow = `0 0 15px var(--color-${color}-glow)`;
+    
+    document.body.appendChild(bubble);
+    
+    setTimeout(() => {
+        bubble.remove();
+    }, 2500);
+}
+
 // 8. Session Management (Start, Reset, End)
 function startLudoGame(override = false) {
     if (!override && !isOnline) {
@@ -1151,6 +1256,12 @@ function startLudoGame(override = false) {
             const nameInput = document.getElementById(`name-${color}`);
             if (nameInput && playerTypes[color] !== 'off') {
                 playerNames[color] = nameInput.value.trim() || `Player ${allColors.indexOf(color) + 1}`;
+            }
+
+            // Read AI difficulty
+            const diffSelect = document.getElementById(`difficulty-${color}`);
+            if (diffSelect) {
+                playerDifficulties[color] = diffSelect.value || 'balanced';
             }
         });
 
@@ -1446,6 +1557,103 @@ document.addEventListener('DOMContentLoaded', () => {
     rulesModal.addEventListener('click', (e) => {
         if (e.target === rulesModal) hideRules();
     });
+
+    // Audio settings modal toggles
+    const audioModal = document.getElementById('audio-settings-modal');
+    const showAudio = () => {
+        document.getElementById('music-volume-slider').value = getAudio().musicVolume;
+        document.getElementById('music-vol-txt').textContent = `${Math.round(getAudio().musicVolume * 100)}%`;
+        document.getElementById('sfx-volume-slider').value = getAudio().sfxVolume;
+        document.getElementById('sfx-vol-txt').textContent = `${Math.round(getAudio().sfxVolume * 100)}%`;
+        audioModal.classList.remove('hidden');
+    };
+    const hideAudio = () => audioModal.classList.add('hidden');
+
+    const audioSettingsBtn = document.getElementById('audio-settings-btn');
+    if (audioSettingsBtn) audioSettingsBtn.addEventListener('click', showAudio);
+    
+    document.getElementById('close-audio-btn').addEventListener('click', hideAudio);
+    document.getElementById('close-audio-footer-btn').addEventListener('click', hideAudio);
+    
+    audioModal.addEventListener('click', (e) => {
+        if (e.target === audioModal) hideAudio();
+    });
+
+    // Volume sliders change listeners
+    const musicSlider = document.getElementById('music-volume-slider');
+    if (musicSlider) {
+        musicSlider.addEventListener('input', (e) => {
+            const vol = parseFloat(e.target.value);
+            getAudio().setMusicVolume(vol);
+            document.getElementById('music-vol-txt').textContent = `${Math.round(vol * 100)}%`;
+        });
+    }
+
+    const sfxSlider = document.getElementById('sfx-volume-slider');
+    if (sfxSlider) {
+        sfxSlider.addEventListener('input', (e) => {
+            const vol = parseFloat(e.target.value);
+            getAudio().setSfxVolume(vol);
+            document.getElementById('sfx-vol-txt').textContent = `${Math.round(vol * 100)}%`;
+        });
+    }
+
+    // Dice Skin change listener
+    const diceSkinSelect = document.getElementById('dice-skin-select');
+    if (diceSkinSelect) {
+        diceSkinSelect.addEventListener('change', (e) => {
+            const skin = e.target.value;
+            const diceEl = document.getElementById('dice');
+            if (diceEl) {
+                diceEl.classList.remove('dice-skin-chromeglass', 'dice-skin-matrix');
+                if (skin === 'chromeglass') {
+                    diceEl.classList.add('dice-skin-chromeglass');
+                } else if (skin === 'matrix') {
+                    diceEl.classList.add('dice-skin-matrix');
+                }
+            }
+        });
+    }
+
+    // Quick Chat event listener
+    const reactionButtons = document.querySelectorAll('.chat-reaction-btn');
+    reactionButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const msg = btn.getAttribute('data-msg');
+            if (isOnline) {
+                if (isHost) {
+                    connections.forEach(conn => {
+                        if (conn.open) {
+                            conn.send({
+                                type: 'CHAT_MSG',
+                                color: myColor,
+                                message: msg
+                            });
+                        }
+                    });
+                } else {
+                    if (hostConn && hostConn.open) {
+                        hostConn.send({
+                            type: 'CHAT_MSG',
+                            color: myColor,
+                            message: msg
+                        });
+                    }
+                }
+            }
+            displayFloatingChat(myColor, msg);
+            logMessage(`[CHAT] ${getPlayerName(myColor)}: ${msg}`, myColor);
+        });
+    });
+
+    // Auto-start music loop on first user interaction
+    const startMusicOnGesture = () => {
+        getAudio().startMusic();
+        document.removeEventListener('click', startMusicOnGesture);
+        document.removeEventListener('keydown', startMusicOnGesture);
+    };
+    document.addEventListener('click', startMusicOnGesture);
+    document.addEventListener('keydown', startMusicOnGesture);
 
     // Mute button
     const muteBtn = document.getElementById('mute-btn');
@@ -1801,7 +2009,8 @@ function handleClientReceivedData(data) {
             break;
  
         case 'CHAT_MSG':
-            logMessage(data.text, data.color);
+            displayFloatingChat(data.color, data.message);
+            logMessage(`[CHAT] ${getPlayerName(data.color)}: ${data.message}`, data.color);
             break;
     }
 }
@@ -1831,6 +2040,21 @@ function handleHostReceivedData(peerId, data) {
                     executeMove(senderColor, data.tokenId, currentRoll);
                 }
             }
+            break;
+
+        case 'CHAT_MSG':
+            // Re-broadcast to all other clients
+            connections.forEach(conn => {
+                if (conn.open && conn.peer !== peerId) {
+                    conn.send({
+                        type: 'CHAT_MSG',
+                        color: data.color,
+                        message: data.message
+                    });
+                }
+            });
+            displayFloatingChat(data.color, data.message);
+            logMessage(`[CHAT] ${getPlayerName(data.color)}: ${data.message}`, data.color);
             break;
     }
 }
@@ -2037,6 +2261,14 @@ function resetOnlineState() {
         blue: 'Player 4 (Blue)',
         orange: 'Player 5 (Orange)',
         purple: 'Player 6 (Purple)'
+    };
+    playerDifficulties = {
+        red: 'balanced',
+        green: 'balanced',
+        yellow: 'balanced',
+        blue: 'balanced',
+        orange: 'balanced',
+        purple: 'balanced'
     };
     tokensCount = 4;
     releaseRule = '6';
