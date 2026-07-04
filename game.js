@@ -560,8 +560,21 @@ function triggerDiceRoll() {
     const diceEl = document.getElementById('dice');
     diceEl.classList.add('rolling');
     
-    // Roll randomly between 1 and 6
-    const roll = Math.floor(Math.random() * 6) + 1;
+    // Roll dice: boost chance of rolling a 6 if player has zero tokens active on the track
+    let roll;
+    const activeTokensCount = players[currentTurnColor].tokens.filter(t => t.step >= 0 && t.step < 56).length;
+    if (activeTokensCount === 0) {
+        // Boosted chance of rolling a 6 (35% probability)
+        if (Math.random() < 0.35) {
+            roll = 6;
+        } else {
+            // Uniform roll between 1 and 5
+            roll = Math.floor(Math.random() * 5) + 1;
+        }
+    } else {
+        // Standard uniform roll (1 to 6)
+        roll = Math.floor(Math.random() * 6) + 1;
+    }
     currentRoll = roll;
 
     // Broadcast roll to clients so they spin locally
