@@ -1532,7 +1532,10 @@ function initHost() {
         statusTxt.textContent = id;
         logMessage(`Host lobby created. Room Code: ${id}`, 'system');
         
-        // Enable online settings dropdowns for host
+        // Enable online settings dropdowns and show container for host
+        const onlineSettings = document.querySelector('.online-settings-container');
+        if (onlineSettings) onlineSettings.classList.remove('hidden');
+
         const boardModeSelect = document.getElementById('online-board-mode-select');
         const tokensSelect = document.getElementById('online-tokens-count-select');
         const releaseSelect = document.getElementById('online-release-rule-select');
@@ -1664,7 +1667,10 @@ function initClient(targetRoomCode) {
             joinStatus.textContent = "Connected! Setting up lobby...";
             document.getElementById('lobby-player-list').classList.remove('hidden');
 
-            // Disable online settings dropdowns for clients (read-only)
+            // Hide online settings dropdowns for clients completely
+            const onlineSettings = document.querySelector('.online-settings-container');
+            if (onlineSettings) onlineSettings.classList.add('hidden');
+
             const boardModeSelect = document.getElementById('online-board-mode-select');
             const tokensSelect = document.getElementById('online-tokens-count-select');
             const releaseSelect = document.getElementById('online-release-rule-select');
@@ -2028,6 +2034,9 @@ function resetOnlineState() {
     if (playList) playList.classList.add('hidden');
     if (startOnlineBtn) startOnlineBtn.classList.add('hidden');
     if (waitMsg) waitMsg.classList.remove('hidden');
+
+    const onlineSettings = document.querySelector('.online-settings-container');
+    if (onlineSettings) onlineSettings.classList.add('hidden');
     
     const joinStatus = document.getElementById('join-status-txt');
     if (joinStatus) joinStatus.textContent = '';
