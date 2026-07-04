@@ -225,16 +225,12 @@
                     <input type="text" id="online-player-name" class="text-input online-name-input" value="Guest" placeholder="ENTER YOUR NAME" maxlength="15">
                 </div>
 
-                <div class="online-roles">
-                    <button id="role-host" class="btn secondary-btn active">Host a Game</button>
-                    <button id="role-join" class="btn secondary-btn">Join a Game</button>
-                </div>
-
-                <!-- Host subpanel -->
-                <div id="host-panel" class="online-subpanel">
+                <!-- Online Setup Actions -->
+                <div class="online-setup-box">
                     <div class="lobby-action-box">
-                        <button id="btn-create-lobby" class="btn primary-btn btn-glow">Generate Lobby</button>
+                        <button id="btn-create-lobby" class="btn primary-btn btn-glow w-full">Host a New Game</button>
                     </div>
+                    
                     <div id="room-code-display" class="room-code-box hidden">
                         <span class="code-label">LOBBY CODE</span>
                         <div class="code-value-wrapper">
@@ -243,10 +239,11 @@
                         </div>
                         <p class="lobby-subtext">Share this code with your friends so they can join!</p>
                     </div>
-                </div>
 
-                <!-- Join subpanel -->
-                <div id="join-panel" class="online-subpanel hidden">
+                    <div class="online-divider">
+                        <span>OR JOIN AN EXISTING GAME</span>
+                    </div>
+
                     <div class="lobby-action-box form-group">
                         <input type="text" id="join-code-input" class="text-input" placeholder="ENTER ROOM CODE" maxlength="15">
                         <button id="btn-join-lobby" class="btn primary-btn btn-glow">Connect Room</button>

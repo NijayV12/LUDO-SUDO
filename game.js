@@ -1398,32 +1398,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Online Roles toggles
-    const roleHostBtn = document.getElementById('role-host');
-    const roleJoinBtn = document.getElementById('role-join');
-    const hostPanel = document.getElementById('host-panel');
-    const joinPanel = document.getElementById('join-panel');
-
-    if (roleHostBtn && roleJoinBtn) {
-        roleHostBtn.addEventListener('click', () => {
-            roleHostBtn.classList.add('active');
-            roleJoinBtn.classList.remove('active');
-            hostPanel.classList.remove('hidden');
-            joinPanel.classList.add('hidden');
-            resetOnlineState();
-            updateOnlineLobbyUI();
-        });
-
-        roleJoinBtn.addEventListener('click', () => {
-            roleJoinBtn.classList.add('active');
-            roleHostBtn.classList.remove('active');
-            joinPanel.classList.remove('hidden');
-            hostPanel.classList.add('hidden');
-            resetOnlineState();
-            updateOnlineLobbyUI();
-        });
-    }
-
     // Multiplayer Buttons
     const btnCreateLobby = document.getElementById('btn-create-lobby');
     if (btnCreateLobby) btnCreateLobby.addEventListener('click', initHost);

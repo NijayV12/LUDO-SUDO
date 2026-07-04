@@ -1370,3 +1370,40 @@ body {
     width: 100%;
 }
 
+/* Online setup unified box */
+.online-setup-box {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.online-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 25px 0;
+    color: var(--neon-blue);
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-shadow: 0 0 5px rgba(0, 242, 254, 0.4);
+}
+
+.online-divider::before,
+.online-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(0, 242, 254, 0.15);
+}
+
+.online-divider::before {
+    margin-right: 1.2rem;
+}
+
+.online-divider::after {
+    margin-left: 1.2rem;
+}
+
